@@ -12,6 +12,7 @@
   add('meta',{name:'apple-mobile-web-app-title',content:'Level-Up'});
 })();
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&family=Anek+Devanagari:wdth,wght@75..125,300..800&family=Anek+Tamil:wdth,wght@75..125,300..800&family=Anek+Bangla:wdth,wght@75..125,300..800&family=Anek+Telugu:wdth,wght@75..125,300..800&family=Anek+Gujarati:wdth,wght@75..125,300..800&family=Anek+Kannada:wdth,wght@75..125,300..800&family=Anek+Malayalam:wdth,wght@75..125,300..800&family=Anek+Odia:wdth,wght@75..125,300..800&family=Anek+Gurmukhi:wdth,wght@75..125,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* Layout: a coach's training log. One strict column (wider on the landing page), hairline rules, numbers in a mono face,
@@ -212,7 +213,7 @@ details .dbody{margin-top:12px;display:grid;gap:12px}
 
 /* ---------- landing ---------- */
 .lbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:12px 28px;padding-block:14px;background:var(--bg)}
-@supports ((backdrop-filter:blur(8px)) or (-webkit-backdrop-filter:blur(8px))){.lbar{background:color-mix(in srgb,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3)}}
+@supports ((backdrop-filter:blur(8px)) or (-webkit-backdrop-filter:blur(8px))){.lbar{background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}}
 .logo{display:inline-flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-family:var(--f-d);font-stretch:85%;font-weight:700;font-size:17px;letter-spacing:.14em;text-transform:uppercase}
 .logo .m1{fill:var(--acc)}
 .lnav{display:flex;gap:26px;margin-left:auto}
@@ -392,7 +393,7 @@ details .dbody{margin-top:12px;display:grid;gap:12px}
 .xptrack i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--h-blue),var(--h-violet),var(--h-coral));transition:width .7s var(--ease)}
 .xpn{font-family:var(--f-m);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;border:1px solid var(--line);background:var(--raise)}
-@supports ((backdrop-filter:blur(8px)) or (-webkit-backdrop-filter:blur(8px))){.tabs{background:color-mix(in srgb,var(--raise) 82%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}}
+@supports ((backdrop-filter:blur(8px)) or (-webkit-backdrop-filter:blur(8px))){.tabs{background:color-mix(in srgb,var(--raise) 84%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}}
 .tabs button{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:42px;padding:0 6px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-weight:600;font-size:14px;white-space:nowrap;
   transition:background-color .25s var(--ease),color .25s,box-shadow .25s}
 .tabs button:hover{color:var(--ink)}
@@ -764,8 +765,10 @@ body.guiding{overflow:hidden}
   .dlive i{animation:blink 1.6s ease-in-out infinite}
   .aurora i:first-child{animation:float1 26s ease-in-out infinite}
   .aurora i:last-child{animation:float2 32s ease-in-out infinite}
-  .hh em{animation:sheen 7s ease-in-out infinite}
-  .tier.pop{animation:spin 7s linear infinite}
+  /* these two repaint the element on every frame (a gradient position and a gradient angle), so they step at 12 fps:
+     the slow drift looks the same and the page stays light on phones */
+  .hh em{animation:sheen 7s steps(84) infinite}
+  .tier.pop{animation:spin 7s steps(84) infinite}
   .xptrack i,.fill{overflow:hidden}
   .xptrack i::after,.fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:sweep 3.4s ease-in-out 1s infinite}
   .xptrack i{position:relative}
@@ -2666,7 +2669,7 @@ $('view').addEventListener('change',function(ev){
   if(tab==='coach'){coachChange(ev);return}
   if(tab==='form'){
     if(t.id==='fcRec'||t.id==='fcPick'){var fl=t.files&&t.files[0];t.value='';fcFile(fl)}
-    else if(t.id==='fcEx'){FC.ex=pickFx(t.value);rerender(true)}
+    else if(t.id==='fcEx'){var fv=String(t.value).split(':');fcSelect(fv[0],fv[1]==='p'?null:+fv[1]);rerender(true)}
     else if(t.id==='fcLang')setVLang(t.value);
     return;
   }
@@ -3017,7 +3020,7 @@ function T(s){
   var core=String(s).trim();if(!core||!/[A-Za-z]/.test(core))return s;
   var r=tCore(core,d);return r==null?s:String(s).replace(core,function(){return r});
 }
-var SKIP='[data-notr],script,style,textarea',ATTRS=['placeholder','aria-label','title'];
+var SKIP='[data-notr],script,style,textarea',ATTRS=['placeholder','aria-label','title','label'];
 function trText(n){
   var p=n.parentElement;if(!p||p.closest(SKIP))return;
   var v=n.nodeValue;if(n.__tr===v)return;
@@ -3752,9 +3755,10 @@ function readAloud(el){
    missing, or until it is downloaded, the built-in coach answers. The safety topics never reach the model. */
 var DAI={state:'off',pct:0,eng:null,lib:null,busy:false,model:''};
 var DAI_LIB='https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm';
-var DAI_MODELS={better:{id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',size:'1 GB'},small:{id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',size:'400 MB'}};
+var DAI_MODELS={better:{id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',size:'1 GB'},small:{id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',size:'300 MB'}};
 function daiOk(){return !inClaude()&&!!navigator.gpu&&window.isSecureContext!==false}
-function daiPick(){var m=navigator.deviceMemory;return (m&&m<6)?'small':'better'}
+/* the small model answers about three times faster than the 1 GB one, and the facts travel with every question anyway, so it is the first choice everywhere */
+function daiPick(){return 'small'}
 /* dynamic import written this way so old browsers that cannot parse import() still run the rest of the app */
 function daiImport(){if(!DAI.lib)DAI.lib=(new Function('u','return import(u)'))(DAI_LIB).catch(function(e){DAI.lib=null;throw e});return DAI.lib}
 function daiLoad(key){
@@ -3778,7 +3782,7 @@ function daiLoad(key){
     return DAI.w.CreateMLCEngine(M.id,opts);
   }).then(function(e){
     DAI.eng=e;DAI.state='ready';st.ui.dai=key;save();daiPaint();toast('The AI coach is ready on this device.');
-    if(mode==='track'&&tab==='coach'&&!CB.busy)rerender(true);
+    if(mode==='track'&&tab==='coach'&&!CB.busy){rerender(true);var cb=$('chatbox');if(cb)cb.scrollIntoView({block:'start',behavior:'smooth'})}
   }).catch(function(e){
     DAI.state='error';DAI.err=String(e&&e.message||e).slice(0,160);st.ui.dai=null;save();daiPaint();
   });
@@ -3829,26 +3833,26 @@ function daiPaint(){var el=$('daiin');if(el)el.innerHTML=daiInner()}
 /* one question to the device model, streamed into onText; resolves with the whole reply */
 function daiAsk(messages,onText){
   var full='';DAI.busy=true;
-  return DAI.eng.chat.completions.create({messages:messages,stream:true,temperature:0.6,top_p:0.9,max_tokens:300}).then(function(it){
+  return DAI.eng.chat.completions.create({messages:messages,stream:true,temperature:0.6,top_p:0.9,max_tokens:160}).then(function(it){
     function drain(){return it.next().then(function(r){if(r.done)return full;var d=r.value&&r.value.choices&&r.value.choices[0]&&r.value.choices[0].delta;if(d&&d.content){full+=d.content;if(onText)onText(full)}return drain()})}
     return drain();
   }).then(function(t){DAI.busy=false;return t},function(e){DAI.busy=false;if(full)return full;throw e});
 }
-/* a short, strict brief written for a small model: the rules it must keep, then the facts about this person */
+/* a short, strict brief written for a small model. Short on purpose: the model has to read all of it before every
+   answer, and on a phone that reading time is most of the wait. The facts for each question travel with the question. */
 function daiSystem(){
-  var teen=st.p.age<18,lang=clang();
-  return 'You are Coach inside the Level-Up home-workout app, talking to one person. Be warm, clear and brief: 2 to 5 short sentences, under 80 words, plain everyday words, no headings, no emojis.\n'
-    +'Rules:\n'
-    +'1. Use only the FACTS below and the facts in the message. Never invent numbers, exercises, dates or results. If something is not in the facts, say you do not know.\n'
-    +'2. Talk only about their training, plan, exercise form, recovery, sleep, food for training and their daily routine. For anything else, say in one friendly sentence that you only help with training, food and their day.\n'
-    +'3. Never write a new program. To change difficulty they tap Harder or Easier on the exercise card; on busy days they do the 15-minute version.\n'
-    +'4. Sharp pain, joint pain, chest pain, fainting or dizziness: say stop and '+(teen?'tell a parent, then see a doctor':'see a doctor')+'. Never diagnose.\n'
-    +'5. '+(teen?'They are under 18: never mention calories, dieting, fasting, weight loss or gain, supplements or protein powder, and never comment on their weight or looks.':'No crash diets or fasting. Food first; supplements only if asked.')+'\n'
-    +'6. Never ask for their real name, school, address, phone number or photos.\n'
-    +'7. If a next step helps, end with at most one button line written exactly like [[open:progress]], [[open:plan]], [[open:day:mon]] (a day code: mon tue wed thu fri sat sun) or [[open:form:ID]] with an ID from EXERCISE IDS.\n'
-    +'8. If they tell you something lasting about themselves (a sport and its days, a routine, a food they dislike), add one line [[remember:short note]].\n'
-    +(lang!=='en'?'9. Reply in '+vname(lang)+', simple spoken style. Keep exercise names in English.\n':'')
-    +'\nFACTS\n'+coachData();
+  var teen=st.p.age<18,lang=clang(),p=st.p,wi=started&&!finished?LU.weekInfo(todayWeek):null;
+  var who=p.nick+', age '+p.age+'. '+(wi?'Week '+todayWeek+' of 18, '+LU.WEEKTYPE[wi.type].name+'. ':finished?'Plan finished. ':'Plan not started yet. ')
+    +p.n+' sessions a week. '+(todayIdx>=0?'Today: '+look(todayWeek,todayIdx).title+' ('+dayStatus(todayWeek,todayIdx)+'). ':'')
+    +'Streak '+streaks().cur+'. Goals: '+((p.goals||[]).map(function(g){return GOALNAME[g]}).join(', ')||'general fitness')+'. Sore areas: '+((p.pain||[]).map(function(a){return LU.PAINAREA[a]}).join(', ')||'none')+'.'
+    +(notesOf().length?' Notes: '+notesOf().join('; ')+'.':'');
+  return 'You are Coach in the Level-Up home-workout app. Reply in 2 to 4 short sentences, under 60 words, plain words, warm, no emojis, no headings.\n'
+    +'Rules: use only the facts given, never invent numbers or exercises; talk only about training, food for training, sleep and their day; never write a new program (they tap Harder or Easier on the card, or do the 15-minute version); '
+    +'sharp pain, chest pain, fainting or dizziness means stop and '+(teen?'tell a parent, then see a doctor':'see a doctor')+'; '
+    +(teen?'they are under 18: no calories, diets, fasting, supplements, protein powder, and no comments on weight or looks; ':'no crash diets or fasting; ')
+    +'never ask for their name, school, contacts or photos. End with one line like [[open:progress]], [[open:plan]] or [[open:day:mon]] only when it helps.'
+    +(lang!=='en'?' Reply in '+vname(lang)+'; keep exercise names in English.':'')
+    +'\nPerson: '+who;
 }
 /* the built-in coach's own answer rides along as the facts for this question, so the numbers come out right */
 function daiFacts(text){
@@ -3858,7 +3862,7 @@ function daiFacts(text){
 }
 function daiChat(text,list,c){
   var ai=document.createElement('div');ai.className='msg ai';ai.innerHTML='<span class="thinking">'+esc(T('Coach is thinking…'))+'</span>';list.appendChild(ai);list.scrollTop=list.scrollHeight;
-  var hist=c.chat.slice(-7).map(function(m){return {role:m.role,content:String(m.content).replace(/[⁣]/g,'').slice(0,900)}});
+  var hist=c.chat.slice(-5).map(function(m){return {role:m.role,content:String(m.content).replace(/[⁣]/g,'').replace(/\[\[[^\]]*\]\]/g,'').trim().slice(0,400)}});
   if(hist.length)hist[hist.length-1].content+=daiFacts(text);
   var msgs=[{role:'system',content:daiSystem()}].concat(hist);
   busy(true);
@@ -3876,7 +3880,7 @@ function daiChat(text,list,c){
 }
 function daiBrief(out){
   out.innerHTML='<p class="thinking">'+esc(T('Your coach is looking at your week…'))+'</p>';busy(true);
-  daiAsk([{role:'user',content:briefPrompt()}],function(t){out.innerHTML=aiHtml(t)}).then(function(t){
+  daiAsk([{role:'system',content:daiSystem()},{role:'user',content:'Write my check-in for today in 3 short sentences, friendly, using only these facts:\n'+localBrief().replace(/[⁣]/g,'')}],function(t){out.innerHTML=aiHtml(t)}).then(function(t){
     t=String(t||'').trim();if(!t)throw new Error('empty');
     CO().brief={date:isoD(NOW),text:t};save();out.innerHTML=aiHtml(t);var bt=$('cBrief');if(bt)bt.textContent=T('Refresh');
   }).catch(function(){var lt=localBrief();CO().brief={date:isoD(NOW),text:lt,local:1};save();out.innerHTML=aiHtml(localT(lt))}).then(function(){busy(false)});
@@ -3886,14 +3890,18 @@ function coachView(){
   setAcc('#0E8A45','#FFFFFF');
   var c=CO(),pr=prefs(),teen=st.p.age<18,h='<h2>Coach <small>made for '+esc(U(st.p.nick))+'</small></h2>';
   if(daiOk()&&st.ui.dai&&DAI.state==='off')daiLoad(st.ui.dai);
-  if(DAI.state==='ready')h+='<div class="tip"><b>Your AI coach runs on this device.</b> It knows your plan and progress. Nothing you type leaves the phone.</div>';
-  else h+='<div class="tip"><b>Your coach is built in.</b> '+(SAMPLE?'It answers from your own plan and progress, in your language. Inside Claude, questions it does not know go to Claude.':'It answers from your own plan and progress, in your language, with no internet needed.')+'</div>';
-  h+=daiCard();
+  var aiTop=DAI.state==='ready';
+  /* once the AI is on the device, the chat takes the place of the download card, right at the top */
+  if(aiTop)h+=chatSection(c,true);
+  else{
+    h+='<div class="tip"><b>Your coach is built in.</b> '+(SAMPLE?'It answers from your own plan and progress, in your language. Inside Claude, questions it does not know go to Claude.':'It answers from your own plan and progress, in your language, with no internet needed.')+'</div>';
+    h+=daiCard();
+  }
   var b=c.brief&&c.brief.date===isoD(NOW)?c.brief:null;
   h+='<section class="cbox"><header><b>Today’s check-in</b><span class="hbtns"><button type="button" class="pill" id="cBrief">'+(b?'Refresh':'Get my check-in')+'</button>'+(SAMPLE?'<button type="button" class="pill ghost" id="cBriefAI">Ask Claude</button>':DAI.state==='ready'?'<button type="button" class="pill ghost" id="cBriefAI">Ask the AI</button>':'')+'</span></header>'
     +'<div class="aiout" id="briefOut" data-notr>'+(b?(b.local?aiHtml(localT(b.text)):aiHtml(b.text)):'<p class="note">'+esc(T('Your coach looks at your streaks, tests and today’s session, then tells you how you are doing.'))+'</p>')+'</div></section>';
   h+=daySection(c,pr);
-  h+=chatSection(c);
+  if(!aiTop)h+=chatSection(c,false);
   h+='<p class="note">Your coach only talks about training, food, sleep and your day. It is not a doctor. '+(teen?'For pain, or worries about food or your body, talk to a parent or a doctor.':'For pain or health worries, see a doctor.')+'</p>';
   return h;
 }
@@ -3925,12 +3933,12 @@ function dayBody(d){
   if(d.src)h+='<p class="note">'+esc(d.src)+'</p>';
   return h;
 }
-function chatSection(c){
+function chatSection(c,aiTop){
   var msgs=c.chat.slice(-30).map(function(m){return '<div class="msg '+(m.role==='user'?'me':'ai')+'">'+(m.role==='user'?esc(m.content):(m.local?aiHtml(localT(m.content)):aiHtml(m.content))+sayBtn())+'</div>'}).join('');
   var Q=['How am I doing?','Review my week','What should I eat after training?','Explain today’s session','I missed a session. What now?','My muscles are sore'];
   var notes=notesOf();
-  return '<section class="cbox"><header><b>Ask Coach</b>'+(c.chat.length?'<button type="button" class="linkbtn" id="cClear">Clear chat</button>':'')+'</header>'
-    +'<p class="note">Your coach can look up any exercise, day or result in your plan, and suggest buttons you can tap.</p>'
+  return '<section class="cbox" id="chatbox"><header><b>'+(aiTop?'AI coach on this device':'Ask Coach')+'</b><span class="hbtns">'+(c.chat.length?'<button type="button" class="linkbtn" id="cClear">Clear chat</button>':'')+(aiTop?'<button type="button" class="linkbtn" id="daiRm">Remove the AI coach</button>':'')+'</span></header>'
+    +'<p class="note">'+(aiTop?'It knows your plan and progress. Nothing you type leaves the phone.':'Your coach can look up any exercise, day or result in your plan, and suggest buttons you can tap.')+'</p>'
     +'<div class="msgs" id="msgs" aria-live="polite" data-notr>'+(msgs||'<p class="note">'+esc(T('Ask anything about your training, food or sleep.'))+'</p>')+'</div>'
     +'<div class="qchips">'+Q.map(function(q){return '<button type="button" data-q="'+esc(q)+'">'+esc(q)+'</button>'}).join('')+'</div>'
     +'<form class="composer" id="cForm"><textarea id="cIn" rows="2" maxlength="600" placeholder="Ask your coach" aria-label="Message to your coach"></textarea>'
@@ -4178,8 +4186,9 @@ function fxCfg(id,n){
   return c;
 }
 function fxOk(id,n){return !!fxCfg(id,n)}
-var FC={ex:null,vr:'full',model:'thunder',det:null,running:false,busy:false,switching:false,src:null,stream:null,video:null,url:null,
+var FC={ex:null,li:null,vr:'full',model:'thunder',det:null,running:false,busy:false,switching:false,src:null,stream:null,video:null,url:null,
   A:null,L:null,target:30,raf:0,facing:'user',frames:0,ms:0,q:null,adapted:false,last:null};
+var PUSHNAME={full:'Full push-up',knee:'Knee push-up',incline:'Incline push-up'};
 var VO={on:st.ui.voice!==0,last:0,said:{}};
 var TFJS=['https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.22.0/dist/tf-core.min.js','https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.22.0/dist/tf-converter.min.js',
   'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.22.0/dist/tf-backend-webgl.min.js','https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js'];
@@ -4441,8 +4450,15 @@ function sideOf(m){
 
 /* ---------- one set ---------- */
 function newA(ex,vr,cfg,kind,name){return {ex:ex,vr:vr,cfg:cfg,kind:kind,name:name,base:null,reps:0,good:0,partial:0,phase:'up',armed:false,downAt:0,minA:999,minAt:0,top:0,faults:{},repFaults:{},ft:{},em:{},
-  hold:0,holdOk:0,lastT:0,lostFor:0,readyFor:0,ready:false,started:false,waitFor:0,lastSec:-1,shots:[],shotKeys:{},events:[],gap:null}}
-function ema(A,k,v){A.em[k]=A.em[k]==null?v:A.em[k]*0.4+v*0.6;return A.em[k]}
+  hold:0,holdOk:0,lastT:0,lostFor:0,probFor:0,readyFor:0,ready:false,started:false,waitFor:0,lastSec:-1,shots:[],shotKeys:{},events:[],gap:null,maxA:null,topAt:0,cal:null,calN:0}}
+/* smoothing: half old, half new. Enough to settle the jitter of the pose points without lagging a rep */
+function ema(A,k,v){A.em[k]=A.em[k]==null?v:A.em[k]*0.5+v*0.5;return A.em[k]}
+/* the person's own straight line, measured while they wait at the top: a camera a little above or below the body
+   makes the hips look high or low, and that is not a fault. Capped, so hips that really sag still get called. */
+function calLine(A,off,when){
+  if(when){A.cal=A.cal==null?off:A.cal*0.85+off*0.15;A.calN++}
+  return A.calN>=8?clamp(A.cal,-0.03,0.03):0;
+}
 /* true once, when a problem has lasted ms */
 function fault(A,cond,key,t,ms){
   var f=A.ft[key]||(A.ft[key]={since:0,fired:false});
@@ -4453,12 +4469,27 @@ function fault(A,cond,key,t,ms){
 }
 function planLevel(ex){return LAD&&LAD[ex]?LAD[ex].L[lvOf(ex,LU.weekInfo(todayWeek).block)]:null}
 function downSecs(L){var m=L&&/(\d+)\s*s (down|out)/.exec(L.tempo||'');return m?+m[1]:0}
-/* a rep is the key angle going below `start` and back above `top`; the first rep only counts once the person was at the top */
+/* a rep is the key angle going below `start` and back above `top`; the first rep only counts once the person was at the top.
+   The top adapts to the person: someone who never quite straightens still gets their reps counted. A small dip that
+   comes straight back up is a wobble, not a rep attempt, so it is ignored instead of being called too shallow. */
 function repTrack(A,sig,t,o){
-  if(!A.armed){if(sig>o.top)A.armed=true;return null}
-  if(A.phase==='up'){if(sig<o.start){A.phase='down';A.downAt=t;A.minA=sig;A.minAt=t;A.repFaults={};A.top=0}return null}
+  if(A.phase==='up')A.maxA=A.maxA==null?sig:Math.max(A.maxA-0.05,sig);
+  var top=o.top,start=o.start;
+  if(A.maxA!=null&&A.maxA<o.top+6){top=Math.max(o.top-25,A.maxA-6);start=Math.min(o.start,top-12)}
+  if(!A.armed){if(sig>top)A.armed=true;return null}
+  if(A.phase==='up'){
+    /* the descent is timed from the moment the person leaves their own top (within 8 degrees of it), not from the line that marks a rep */
+    if(sig>=(A.maxA!=null?A.maxA:top)-8)A.topAt=t;
+    if(sig<start){A.phase='down';A.downAt=A.topAt||t;A.minA=sig;A.minAt=t;A.repFaults={};A.top=0}
+    return null;
+  }
   if(sig<A.minA){A.minA=sig;A.minAt=t}
-  if(sig>o.top){A.phase='up';return {min:A.minA,down:(A.minAt-A.downAt)/1000,back:(t-A.minAt)/1000,faults:A.repFaults}}
+  if(sig>top){
+    A.phase='up';A.topAt=t;
+    var travel=(A.maxA!=null?A.maxA:top)-A.minA;
+    if(travel<(o.minTravel||18)||t-A.downAt<450)return null;
+    return {min:A.minA,down:(A.minAt-A.downAt)/1000,back:(t-A.minAt)/1000,faults:A.repFaults};
+  }
   if(t-A.downAt>20000)A.phase='up';
   return null;
 }
@@ -4489,12 +4520,16 @@ function holdTalk(A){
 
 /* ---------- the six exercises: each returns the line to draw, or a wait message ---------- */
 function exPush(A,s,t){
-  var end=A.vr==='knee'?s.knee:s.ankle,dx=Math.abs(end.x-s.shoulder.x),dy=Math.abs(end.y-s.shoulder.y);
+  /* the far end of the body line: the ankle, or the knee when the ankle is out of view or on knee push-ups */
+  var end=A.vr==='knee'?s.knee:(okp(s.ankle)?s.ankle:s.knee);
+  if(!okp(end)||!okp(s.shoulder))return {wait:'Get into your push-up position, side-on to the camera.'};
+  var dx=Math.abs(end.x-s.shoulder.x),dy=Math.abs(end.y-s.shoulder.y);
   if(dy>(A.vr==='incline'?1.4:0.75)*dx)return {wait:'Get into your push-up position, side-on to the camera.'};
-  var e=ema(A,'e',ang(s.shoulder,s.elbow,s.wrist)),off=yOff(s.shoulder,s.hip,end),ls=off>0.07?'sag':off<-0.1?'pike':'ok';
+  var e=ema(A,'e',ang(s.shoulder,s.elbow,s.wrist)),off=yOff(s.shoulder,s.hip,end);
+  var b=calLine(A,off,A.ready&&A.phase==='up'&&!A.reps),ls=off>b+0.07?'sag':off<b-0.1?'pike':'ok';
   if(fault(A,ls==='sag','sag',t,500))cueF(A,'sag');
   if(fault(A,ls==='pike','pike',t,500))cueF(A,'pike');
-  var ev=repTrack(A,e,t,{start:140,top:150});
+  var ev=repTrack(A,e,t,{start:140,top:150,minTravel:30});
   if(ev)endRep(A,ev,{good:A.vr==='incline'?105:100,slack:15,down:downSecs(FC.L)||3,shortTxt:'Not counted. Go lower, chest to a fist from the floor.',shallowTxt:CUES.shallow});
   return {line:{pts:[s.shoulder,s.hip,end],col:ls==='ok'?COL.ok:COL.bad}};
 }
@@ -4502,7 +4537,7 @@ function exSquat(A,s,t){
   var k=ema(A,'k',ang(s.hip,s.knee,s.ankle)),ln=lean(s.shoulder,s.hip),sore=has(st.p&&st.p.pain,'knee');
   if(A.phase==='up'&&ln>60)return {wait:'Stand up tall, side-on to the camera.'};
   if(fault(A,A.phase==='down'&&k<125&&ln>50,'chest',t,350))cueF(A,'chest');
-  var ev=repTrack(A,k,t,{start:145,top:160});
+  var ev=repTrack(A,k,t,{start:145,top:160,minTravel:25});
   if(ev)endRep(A,ev,{good:sore?140:100,slack:sore?25:20,noDepth:sore,down:downSecs(FC.L)||3,shortTxt:'Not counted. Go lower, thighs level with the floor.',shallowTxt:'A little lower, thighs level with the floor.'});
   var col=A.ft.chest&&A.ft.chest.since?COL.bad:(A.phase==='down'&&k>100&&!sore?COL.warn:COL.ok);
   return {line:{pts:[s.shoulder,s.hip,s.knee,s.ankle],col:col}};
@@ -4518,7 +4553,7 @@ function exLunge(A,s,t,m){
     var fr=kL<kR?'left_':'right_',bk=fr==='left_'?'right_':'left_',leg=dist(m[fr+'hip'],m[fr+'knee'])+dist(m[fr+'knee'],m[fr+'ankle']);
     var gap=(m[fr+'ankle'].y-m[bk+'knee'].y)/(leg||1);A.gap=A.gap==null?gap:Math.min(A.gap,gap);
   }
-  var ev=repTrack(A,k,t,{start:140,top:155});
+  var ev=repTrack(A,k,t,{start:140,top:155,minTravel:25});
   if(ev){
     if(!sore&&!A.cfg.noBack&&A.gap!=null&&A.gap>0.3&&ev.min<=125){ev.faults.knee=1;A.faults.knee=(A.faults.knee||0)+1;showCue(CUES.knee,'');say(CUES.knee)}
     A.gap=null;
@@ -4529,7 +4564,7 @@ function exLunge(A,s,t,m){
 function exPlank(A,s,t,m,dt){
   var dx=Math.abs(s.ankle.x-s.shoulder.x),dy=Math.abs(s.ankle.y-s.shoulder.y);
   if(dy>0.6*dx)return {wait:'Get into your plank, side-on to the camera.'};
-  var off=yOff(s.shoulder,s.hip,s.ankle),ls=off>0.07?'sag':off<-0.1?'pike':'ok';
+  var off=yOff(s.shoulder,s.hip,s.ankle),b=calLine(A,off,A.hold<1200),ls=off>b+0.07?'sag':off<b-0.1?'pike':'ok';
   if(!A.started){A.started=true;say('Hold it. Timer started.',true)}
   if(fault(A,ls==='sag','sag',t,600))cueF(A,'sag');
   if(fault(A,ls==='pike','pike',t,600))cueF(A,'pike');
@@ -4542,7 +4577,7 @@ function exBridge(A,s,t,m,dt){
   var h=ema(A,'h',ang(s.shoulder,s.hip,s.knee));
   if(A.phase==='down'&&h>160)A.top+=dt;
   /* the hip angle grows as the hips rise, so the rep is tracked on 300 minus it */
-  var ev=repTrack(A,300-h,t,{start:150,top:158});
+  var ev=repTrack(A,300-h,t,{start:150,top:158,minTravel:10});
   if(ev){
     var sq=ev.min<=147&&A.top<900;
     if(sq){ev.faults.squeeze=1;A.faults.squeeze=(A.faults.squeeze||0)+1}
@@ -4613,7 +4648,7 @@ function exGen(A,s,t,m,dt){
   if(raw==null)return {wait:'Turn so the camera can see the arm or leg that moves.'};
   /* 100 = start of the rep, 0 = the hardest point */
   var v=ema(A,'g',raw),nrm=100*(v-c.peak)/((c.rest-c.peak)||1);
-  var ev=repTrack(A,nrm,t,{start:75,top:88});
+  var ev=repTrack(A,nrm,t,{start:75,top:88,minTravel:20});
   if(ev)endRep(A,ev,{good:15,slack:30,slow:c.slow,N:slowSecs(FC.L),shortTxt:'Not counted. Use the full range of the move.',shallowTxt:'A little further next time.'});
   return {line:{pts:pts,col:col}};
 }
@@ -4677,13 +4712,15 @@ function snap(A,key){
 function fcStep(pose,t){
   var A=FC.A;if(!A)return;
   var m=kmap(pose),s=sideOf(m),dt=A.lastT?Math.max(0,Math.min(400,t-A.lastT)):0;A.lastT=t;
-  var prob=problem(m,s,FC.q,A.cfg);setChecks(prob,FC.q);
+  var prob=problem(m,s,FC.q,A.cfg);
   if(prob){
-    A.lostFor+=dt;A.readyFor=0;
-    if(A.lostFor>900||!A.ready){showCue(PROB[prob],'bad');if(A.lostFor>900)say(PROB[prob])}
+    /* a few bad frames are normal; only a problem that lasts half a second is shown, and spoken after a full second */
+    A.probFor+=dt;A.readyFor=0;
+    if(A.probFor>=500){setChecks(prob,FC.q);A.lostFor+=dt;showCue(PROB[prob],'bad');A.probShown=true;if(A.lostFor>500){A.lostFor=-99999;say(PROB[prob])}}
     draw(m,null);return;
   }
-  A.lostFor=0;
+  setChecks('',FC.q);A.probFor=0;A.lostFor=0;
+  if(A.probShown){A.probShown=false;if(A.ready)showCue(A.kind==='hold'?'I can see you. Get into position and hold.':'I can see you. Start when you are ready.','ok')}
   if(!A.ready){
     A.readyFor+=dt;
     if(A.readyFor>=700){A.ready=true;var r0=A.kind==='hold'?'I can see you. Get into position and hold.':'I can see you. Start when you are ready.';showCue(r0,'ok');say(r0,true)}
@@ -4724,16 +4761,16 @@ function warmUp(v){showCue('Warming up the checker…','');return FC.det.estimat
 /* slow phone: a video plays at half speed; the live camera switches to the faster model */
 function perfAdapt(){
   if(FC.frames!==20||FC.adapted)return;FC.adapted=true;
-  if(FC.ms<85)return;
+  if(FC.ms<70)return;
   if(FC.src==='file'){FC.video.playbackRate=0.5;fcNote('Your device is a little slow, so the video plays at half speed for better accuracy.')}
   else if(FC.model==='thunder'){FC.switching=true;loadDetector('lightning').then(function(){fcNote('Switched to the faster model so the camera keeps up.')}).catch(function(){}).then(function(){FC.switching=false})}
 }
 function setBox(){var v=FC.video,b=$('fcBox');if(b&&v&&v.videoWidth)b.style.aspectRatio=v.videoWidth+' / '+v.videoHeight}
 function fcPrep(){
   fcStop();speechPrime();
-  var L=planLevel(FC.ex),c=fxCfg(FC.ex,L?L.n:'')||fxCfg('pushup','Full push-up');
+  var L=fcLevel(),c=fxCfg(FC.ex,L?L.n:'')||fxCfg('pushup','Full push-up');
   var kind=c.ded?FX[c.ded].kind:((L&&isTimed(L.u))||!c.signal?'hold':'reps');
-  FC.L=L;FC.A=newA(FC.ex,c.ded==='pushup'?FC.vr:'full',c,kind,L?L.n:FX[c.ded||'pushup'].name);
+  FC.L=L;FC.A=newA(FC.ex,c.ded==='pushup'?FC.vr:'full',c,kind,c.ded==='pushup'?PUSHNAME[FC.vr]:L?L.n:FX[c.ded||'pushup'].name);
   FC.target=L&&isTimed(L.u)?tgtOf(L,LU.weekInfo(todayWeek).type):30;
   FC.video=$('fcVideo');FC.frames=0;FC.ms=0;FC.adapted=false;FC.q=null;lastChecks='';
   $('fcStage').hidden=false;$('fcSum').innerHTML='';
@@ -4753,7 +4790,8 @@ function liveText(k){
 function fcLive(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){fcError(liveText('none'));return}
   var ready=fcPrep(),v=FC.video;ready.catch(function(){});
-  navigator.mediaDevices.getUserMedia({video:{facingMode:FC.facing,width:{ideal:1280},height:{ideal:720}},audio:false}).then(function(stream){
+  /* the pose model looks at a 256-pixel copy of each frame, so a 640 × 480 camera picture is all it needs and it runs much lighter */
+  navigator.mediaDevices.getUserMedia({video:{facingMode:FC.facing,width:{ideal:640},height:{ideal:480},frameRate:{ideal:30,max:30}},audio:false}).then(function(stream){
     FC.stream=stream;v.srcObject=stream;v.muted=true;$('fcMir').classList.toggle('flip',FC.facing==='user');
     return v.play();
   }).then(function(){return ready}).then(function(){return warmUp(v)}).then(function(){if(FC.stream)fcGo('live')}).catch(function(e){
@@ -4799,15 +4837,41 @@ function fcFinish(){
   h+=fk.length?'<ul class="why">'+fk.map(function(k){return '<li>'+esc(SHORT[k]||k)+' · '+A.faults[k]+'×</li>'}).join('')+'</ul>'
     :'<p class="p0">'+(A.reps||A.holdOk>3000?'No form problems spotted. Nice work.':'I did not see a full rep. Check the set-up tips and try again.')+'</p>';
   if(A.partial)h+='<p class="p0">'+A.partial+' rep'+(A.partial>1?'s were':' was')+' too shallow to count.</p>';
+  /* the written review comes at once from the numbers; the AI adds to it where it can run */
+  h+='<div class="aiout review">'+localFormReview(A).map(function(l){return '<p>'+esc(l)+'</p>'}).join('')+'</div>';
   if(SAMPLE)h+='<div class="fb"><button type="button" class="pill" id="fcAsk">Ask Coach about this set</button></div><p class="note">Sends your set summary'+(A.shots.length?' and up to 2 still frames with the body lines':'')+' to your coach.</p>';
+  else if(DAI.state==='ready')h+='<div class="fb"><button type="button" class="pill" id="fcAsk">Ask Coach about this set</button></div><p class="note">Sends your set summary to the AI coach on this device.</p>';
   h+='<div class="aiout" id="fcAi"></div></section>';
   var o=$('fcSum');if(o)o.innerHTML=h;
   showCue('Set finished.','ok');
   say(hold?'Done. '+Math.round(A.holdOk/1000)+' seconds with good form.':'Set done. '+A.reps+' reps, '+A.good+' with good form.',true);
   FC.A=null;
 }
+/* three lines from the numbers: what went well, what to fix first, and the cue for the next set */
+function localFormReview(A){
+  var L=[],hold=A.kind==='hold',fk=Object.keys(A.faults).sort(function(a,b){return A.faults[b]-A.faults[a]});
+  if(!A.reps&&!A.partial&&!(hold&&A.holdOk>0)&&!fk.length)return L;
+  if(hold)L.push(A.hold>0&&A.holdOk>=A.hold*0.8?'Steady hold: most of your time was in good form.':A.holdOk>0?'You held it. Now make the hold steadier.':'I did not see a full rep. Check the set-up tips and try again.');
+  else if(A.reps&&A.good===A.reps)L.push('Every rep counted had good form. That is the goal.');
+  else if(A.reps)L.push(A.good+' of '+A.reps+' reps had good form.');
+  else L.push('I did not see a full rep. Check the set-up tips and try again.');
+  var k=fk[0];
+  if(k){
+    L.push('Fix first: '+U(SHORT[k]||k)+'.');
+    L.push(k==='fast'?'Slow down. Take '+(downSecs(FC.L)||3)+' seconds on the way down.':k==='shallow'?'A little lower next time.':(CUES[k]||''));
+  }else if(A.partial)L.push('Fix first: depth. Go all the way down on every rep, even if that means fewer reps.');
+  else if(A.reps||A.holdOk>0)L.push('Next set: same form, one more rep.');
+  return L.filter(Boolean);
+}
 function fcAsk(){
-  var out=$('fcAi'),last=FC.last;if(!out||!last||CB.busy||!needAI(out))return;
+  var out=$('fcAi'),last=FC.last;if(!out||!last||CB.busy)return;
+  if(!SAMPLE){
+    if(DAI.state!=='ready')return;
+    out.innerHTML='<p class="thinking">'+esc(T('Your coach is looking at your set…'))+'</p>';busy(true);
+    daiAsk([{role:'system',content:daiSystem()},{role:'user',content:'I just used the camera form check. Result: '+last.text+'\nIn under 70 words: one thing that went well, the one thing to fix first and how, and a short cue to remember for the next set.'}],
+      function(t){out.innerHTML=md(coachParse(t).text)}).then(function(t){out.innerHTML=md(coachParse(String(t||'')).text)},function(){out.innerHTML=''}).then(function(){busy(false)});
+    return;
+  }
   out.innerHTML='<p class="thinking">'+esc(T('Your coach is looking at your set…'))+'</p>';busy(true);
   SAMPLE.limits().catch(function(){return null}).then(function(lim){
     var imgs=lim&&lim.images&&last.shots.length?last.shots.slice(0,Math.max(1,Math.min(2,lim.images.maxCount||1))).map(function(x){return x.blob}):null;
@@ -4820,33 +4884,52 @@ function fcAsk(){
 }
 /* every exercise in the plan the camera can check, at this week's level */
 function fxIds(){return PL.used.filter(function(id){var L=planLevel(id);return L&&fxOk(id,L.n)})}
+/* every exercise level the camera can check, from the whole ladder book, grouped by exercise */
+function fxList(){
+  var out=[];
+  Object.keys(LU.S).forEach(function(id){var S=LU.S[id];S.L.forEach(function(L,li){if(fxOk(id,L.n))out.push({id:id,li:li,n:L.n,g:S.name})})});
+  return out;
+}
+/* the level being checked: a level picked from the full list, or the plan's own level for that exercise */
+function fcLevel(){var S=FC.li!=null?LU.S[FC.ex]:null;return S&&S.L[FC.li]?S.L[FC.li]:planLevel(FC.ex)}
+function fcSelect(id,li){
+  FC.ex=id;FC.li=li==null?null:li;
+  var L=fcLevel(),c=L&&fxCfg(id,L.n);FC.vr=(c&&c.vr)||'full';
+  return id;
+}
 /* the Form tab opens on today's first exercise */
 function defaultFx(){
   var ids=fxIds();
   if(todayIdx>=0&&kindOf(todayWeek,todayIdx)==='train'){
     var cs=sessionCards(todayWeek,todayIdx);
-    for(var j=0;j<cs.length;j++){if(cs[j].kind!=='lift')continue;for(var q=0;q<cs[j].slots.length;q++){if(ids.indexOf(cs[j].slots[q])>-1)return pickFx(cs[j].slots[q])}}
+    for(var j=0;j<cs.length;j++){if(cs[j].kind!=='lift')continue;for(var q=0;q<cs[j].slots.length;q++){if(ids.indexOf(cs[j].slots[q])>-1)return fcSelect(cs[j].slots[q],null)}}
   }
-  return pickFx(ids.indexOf('pushup')>-1?'pushup':ids[0]);
+  return fcSelect(ids.indexOf('pushup')>-1?'pushup':(ids[0]||'pushup'),null);
 }
-function pickFx(id){var L=planLevel(id),c=L&&fxCfg(id,L.n);FC.vr=(c&&c.vr)||'full';return id}
+function pickFx(id){return fcSelect(id,null)}
 /* the camera button on an exercise opens its check and starts the camera in the same tap:
    live where the browser allows it, the phone's video recorder inside Claude */
 function openForm(id){
   if(!LAD[id])return;
-  FC.ex=pickFx(id);tab='form';setHash('form');stopRest();render();window.scrollTo(0,0);
+  fcSelect(id,null);tab='form';setHash('form');stopRest();render();window.scrollTo(0,0);
   if(inClaude()){var r=$('fcRec');if(r)r.click()}else fcLive();
 }
 function formView(){
   setAcc('#E5401A','#FFFFFF');
   var ids=fxIds();
-  if(!FC.ex||ids.indexOf(FC.ex)<0)FC.ex=defaultFx();
-  var L=planLevel(FC.ex),c=fxCfg(FC.ex,L?L.n:'')||fxCfg('pushup','Full push-up'),wt=LU.weekInfo(todayWeek).type;
+  if(!FC.ex||!LU.S[FC.ex]||(FC.li==null&&ids.indexOf(FC.ex)<0))defaultFx();
+  var L=fcLevel(),c=fxCfg(FC.ex,L?L.n:'')||fxCfg('pushup','Full push-up'),wt=LU.weekInfo(todayWeek).type;
   var h='<h2>Form check <small>lines on your body, reps counted, cues spoken</small></h2>';
-  h+='<div class="field"><label for="fcEx">Exercise</label><select id="fcEx" class="txt">'+ids.map(function(id){return '<option value="'+id+'"'+(id===FC.ex?' selected':'')+'>'+esc(planLevel(id).n)+'</option>'}).join('')+'</select></div>';
+  /* the picker: the plan's own exercises first, then every level the camera knows, grouped by exercise */
+  var groups={},order=[];
+  fxList().forEach(function(x){if(!groups[x.g]){groups[x.g]=[];order.push(x.g)}groups[x.g].push(x)});
+  var opts='<optgroup label="In your plan">'+ids.map(function(id){return '<option value="'+id+':p"'+(FC.li==null&&id===FC.ex?' selected':'')+'>'+esc(planLevel(id).n)+'</option>'}).join('')+'</optgroup>';
+  opts+=order.map(function(g){return '<optgroup label="'+esc(g)+'">'+groups[g].map(function(x){return '<option value="'+x.id+':'+x.li+'"'+(FC.li===x.li&&x.id===FC.ex?' selected':'')+'>'+esc(x.n)+'</option>'}).join('')+'</optgroup>'}).join('');
+  h+='<div class="field"><label for="fcEx">Exercise</label><select id="fcEx" class="txt">'+opts+'</select></div>';
   if(c.ded==='pushup')h+='<div class="seg" role="group" aria-label="Push-up type">'+FX.pushup.vars.map(function(v){return '<button type="button" data-fv="'+v[0]+'"'+pressed(FC.vr===v[0])+'>'+v[1]+'</button>'}).join('')+'</div>';
   h+='<div class="tip"><b>Set up.</b> '+esc(c.setup)+' Good light, fitted clothes and a clear floor help me see you.'
-    +(L?'<p>Your level now: <b>'+esc(L.n)+'</b></p>'+(isTimed(L.u)?'<p>Target: '+tgtOf(L,wt)+' s</p>':(L.tempo&&L.tempo!=='Hold'?'<p>Tempo: '+esc(L.tempo)+'</p>':'')):'')+'</div>';
+    +(c.ded==='pushup'?'<p>Checking as: <b>'+esc(PUSHNAME[FC.vr])+'</b></p>':'')
+    +(L?'<p>'+(FC.li==null?'Your level now: ':'Level: ')+'<b>'+esc(L.n)+'</b></p>'+(isTimed(L.u)?'<p>Target: '+tgtOf(L,wt)+' s</p>':(L.tempo&&L.tempo!=='Hold'?'<p>Tempo: '+esc(L.tempo)+'</p>':'')):'')+'</div>';
   h+='<div class="fsrc"><button type="button" class="pill" id="fcLive">Start live camera</button><button type="button" class="pill ghost" id="fcRecB">Record a video</button><button type="button" class="pill ghost" id="fcPickB">Choose a video</button></div>';
   h+='<input type="file" id="fcRec" accept="video/*" capture hidden><input type="file" id="fcPick" accept="video/*" hidden>';
   h+='<div class="fb"><button type="button" class="pill ghost" id="fcVoice" aria-pressed="'+VO.on+'">'+(VO.on?'Voice on':'Voice off')+'</button><button type="button" class="pill ghost" id="fcCam">'+(FC.facing==='user'?'Use back camera':'Use front camera')+'</button></div>';
