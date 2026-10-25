@@ -679,6 +679,10 @@ body.guiding{overflow:hidden}
 .composer{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
 .composer textarea{flex:1 1 200px;min-width:0;min-height:48px;max-height:160px;resize:vertical;padding:12px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);color:var(--ink);font-size:16px;transition:border-color .2s,box-shadow .2s}
 .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.msg .sayb{justify-self:end;width:30px;height:30px;padding:0;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;transition:color .2s,border-color .2s}
+.msg .sayb:hover{color:var(--ink);border-color:var(--ink)}
+.msgs .fup{padding:2px 0 4px}
+.msgs .fup button{font-size:13px;min-height:32px;color:var(--muted)}
 .acts .pill{min-height:36px;padding:0 14px;font-size:13.5px;background:var(--surface)}
 .memo{margin:0;font-family:var(--f-m);font-size:11.5px;color:var(--good)}
 .mlist{list-style:none;margin:0;padding:0;display:grid}
@@ -3504,7 +3508,13 @@ var CK=[
   ['body',/\b(weight|fat|thin|skinny|slim|lose|gain|bulk|cut|diet|dieting|calorie|calories|kcal|fasting|supplements?|protein powder|whey|creatine|abs|six.?pack|muscular)\b|look (good|bad)|my body|वज़न|वजन|मोटा|पतला|डाइट|कैलोरी|सप्लीमेंट|प्रोटीन पाउडर|एब्स|எடை|டயட்|கலோரி|சப்ளிமெண்ட்|புரோட்டீன் பவுடர்|ওজন|মোটা|রোগা|ডায়েট|ক্যালরি|সাপ্লিমেন্ট/i],
   ['pain',/\b(pain|hurt|hurts|hurting|injur\w*|sprain\w*|twisted|swollen|swelling|limp|limping|ache|aching)\b|दर्द|चोट|मोच|सूजन|दुखत|வலி|காயம்|ব্যথা|চোট|আঘাত/i],
   ['sore',/\bsore|soreness|stiff|\bdoms\b|muscles? (are|feel) (tired|heavy)|अकड़|जकड़|आंबल|அசதி|இறுக்க|টান ধরে|শক্ত হয়ে/i],
+  ['remember',/^remember\b|\bi play\b|\bmy sport\b|\bi usually\b|\bi (like|love|prefer)\b|\bi (don'?t|do not) (like|eat)\b|\bi hate\b|allergic|\bi can'?t eat\b|\bi have (school|tuition|coaching|practice|class|cricket|football)|मैं खेलता|मैं खेलती|मुझे पसंद|पसंद नहीं|एलर्जी|मी खेळतो|मला आवडत|நான் விளையாடு|எனக்கு பிடிக்க|আমি খেলি|আমার পছন্দ|পছন্দ না/i],
   ['how',/how am i|how.?m i doing|my progress|am i (improving|getting better)|\bprogress\b|doing well|\bstreak\b|कैसा चल|प्रोग्रेस|कितना सुधार|कसं चाललंय|प्रगती|எப்படி இருக்கிறேன்|முன்னேற்றம்|কেমন করছি|উন্নতি|প্রগ্রেস/i],
+  ['growth',/taller|\bheight\b|grow taller|stunt|stop(s)? (my )?growth|लंबा|मेरा कद|उंची|உயரம்|লম্বা হ|উচ্চতা/i],
+  ['results',/how long (until|till|before)|when will i|see results|see a change|get (stronger|better) fast|कब तक|कितने दिन में|किती दिवसांत|எப்போது (பலன்|மாற்றம்)|কতদিনে|কবে (ফল|পরিবর্তন)/i],
+  ['friends',/\bfriends?\b|compare|better than me|stronger than me|दोस्त|तुलना|मित्र|நண்பர்|ஒப்பிட|বন্ধু|তুলনা/i],
+  ['breathing',/breath|breathe|breathing|सांस|श्वास|மூச்சு|শ্বাস/i],
+  ['posture',/posture|slouch|hunch|straight back|round(ed)? shoulders|झुक|ভঙ্গি|কুঁজো|கூன்/i],
   ['week',/review my week|this week|my week|weekly|हफ़्ते|हफ्ते|सप्ताह|आठवड|வாரம்|সপ্তাহ/i],
   ['food',/\b(eat|eating|food|meal|meals|snack|breakfast|lunch|dinner|hungry|protein|after training|before training|pre.?workout|post.?workout)\b|खाना|खाऊ|नाश्ता|भूख|जेवण|खावं|சாப்பிட|உணவு|காலை உணவு|பசி|খাব|খাবার|খাওয়া|নাশতা|খিদে/i],
   ['today',/today|this session|explain (the|today|my)|what (do|should|am) i (do|doing|train|training)|आज|இன்று|இன்றைய|আজ/i],
@@ -3518,7 +3528,7 @@ var CK=[
   ['test',/\btests?\b|test day|test week|टेस्ट|परीक्षा|சோதனை|டெஸ்ட்|টেস্ট|পরীক্ষা/i],
   ['form',/form check|camera|video|my form|technique|कैमरा|फ़ॉर्म|फॉर्म|கேமரா|ஃபார்ம்|ক্যামেরা|ফর্ম/i],
   ['xp',/\bxp\b|badge|points|streak freeze|\brank\b|legend|बैज|पॉइंट|பேட்ஜ்|புள்ளி|ব্যাজ|পয়েন্ট/i],
-  ['tired',/tired|lazy|no time|busy|don'?t feel like|not motivated|motivation|bored|give up|थक|आलस|समय नहीं|मन नहीं|कंटाळ|वेळ नाही|சோர்வு|நேரம் இல்லை|சோம்பல்|ক্লান্ত|সময় নেই|ইচ্ছে করছে না|আলসেমি/i],
+  ['tired',/tired|lazy|no time|busy|don'?t feel like|not motivated|motivation|bored|give up|\bexams?\b|homework|studies|थक|आलस|समय नहीं|मन नहीं|कंटाळ|वेळ नाही|சோர்வு|நேரம் இல்லை|சோம்பல்|ক্লান্ত|সময় নেই|ইচ্ছে করছে না|আলসেমি/i],
   ['when',/which days?|what days?|schedule|timetable|next session|when (do|should) i train|कौन से दिन|कब |कधी|எந்த நாள்|எப்போது|কোন দিন|কখন/i],
   ['hi',/^(hi|hello|hey|yo|namaste|hola|good (morning|evening|afternoon)|sup)\b|^(नमस्ते|हैलो|हाय|வணக்கம்|নমস্কার|হ্যালো)/i],
   ['thanks',/thank|thanks|thx|^ok(ay)?( coach)?[.!]?$|^(great|nice|cool)[.!]?$|धन्यवाद|शुक्रिया|आभार|நன்றி|ধন্যবাদ/i]
@@ -3538,7 +3548,7 @@ function lcNextTest(){var w=lcWeekNow()||1;for(var i=0;i<LU.TESTWEEKS.length;i++
 function lcFoods(cat,n){var pr=prefs();return FOODS.filter(function(f){return f[2]===cat&&has(pr.foods,f[0])&&foodOk(f,pr.diet)}).slice(0,n).map(function(f){return f[1]})}
 /* the exercise they named, if any, as an id from the plan */
 function lcFindEx(q){
-  var hit=null;
+  var hit=null;q=String(q).toLowerCase();
   PL.used.forEach(function(id){if(hit)return;var S=LAD[id],names=[S.name].concat(S.L.map(function(L){return L.n}));for(var i=0;i<names.length;i++){if(q.indexOf(String(names[i]).toLowerCase())>-1){hit=id;return}}});
   if(!hit){var k={pushup:/push.?up/,squat:/squat/,plank:/plank/,lunge:/lunge|split squat/,row:/\brow\b/,bridge:/bridge|hip thrust/,hinge:/deadlift|hinge/,pullup:/pull.?up|chin.?up|hang/};for(var id in k)if(k[id].test(q)&&LAD[id]&&PL.used.indexOf(id)>-1){hit=id;break}}
   return hit;
@@ -3573,12 +3583,23 @@ function lcReply(k,q){
     add('If it is only soreness, train as planned and warm up well. If it hurts to move, take the easy walk instead.');
     add(who('Muscle burn is normal. Sharp pain, joint pain, or any pain that lasts more than 2 days or wakes you at night means stop that exercise and tell a parent. If you are in a growth spurt, keep the same levels and do half the jumps and sprints.'));return L;
   }
+  if(k==='remember'){
+    rememberAll([String(q).trim().replace(/^remember( that)?\s*/i,'')]);
+    add('Saved. I will keep that in mind when I answer.');add('You can see and remove what I remember under What your coach remembers, below the chat.');return L;
+  }
+  if(k==='growth'){add('Training like this does not stop you growing. Sleep, regular meals and daylight matter most for growth.');add('In a growth spurt, keep the same levels and do half the jumps and sprints.');return L}
+  if(k==='results'){add('Most people feel stronger in 2 to 3 weeks and see it in their test numbers at week 4.');add('Showing up on your planned days beats any trick. The plan does the rest.');var nx0=lcNextTest();if(nx0)add('Your next test day is in week '+nx0+'.');add('[[open:progress]]');return L}
+  if(k==='friends'){add('Compare yourself with last week’s you, not with anyone else. Your tests show your own progress.');add('Training with a friend is great: take turns watching each other’s form.');return L}
+  if(k==='breathing'){add('Breathe out on the hard part of the move and in on the easy part. Never hold your breath during a set.');add('On holds like the plank, keep breathing slowly the whole time.');return L}
+  if(k==='posture'){add('Posture improves with the back and shoulder-blade moves in your plan, plus the daily habit: stand tall, chin tucked, a few times a day.');add('Wall slides and prone Y-T-W raises are the posture moves. Do them slowly and feel the shoulder blades move.');return L}
   if(k==='how'){
     if(!w){notStarted();return L}
     S=lcStats(w);wi=LU.weekInfo(w);
     add('Week '+w+' of '+LU.WEEKS+'. You have done '+S.tot+' sessions in total.');
     add('This week: '+S.ws.sess+' of '+st.p.n+' sessions done.');
+    if(w>1){var lw=weekStats(w-1);add('Last week: '+lw.sess+' of '+st.p.n+' sessions.')}
     add(S.sk.cur>1?S.sk.cur+' sessions in a row. Keep it going.':S.sk.cur===1?'Your streak has started.':'No streak yet. Your next session starts one.');
+    if(S.sk.best>S.sk.cur)add('Best streak so far: '+S.sk.best+' sessions.');
     var tests=lcTests();
     if(tests.length)tests.slice(0,3).forEach(function(t){add(U(t[0])+': '+U(t[1])+' at the start, '+U(t[2])+' in week '+t[3]+'.')});
     else if(w<LU.TESTWEEKS[0])add('Your first test day is in week '+LU.TESTWEEKS[0]+'. That is when you will see your numbers move.');
@@ -3677,9 +3698,13 @@ function lcReply(k,q){
 }
 function lcFallback(){return ['I can help with your training, food, sleep and your day. Try one of these:','- How am I doing?','- Explain today’s session','- What should I eat after training?','- My muscles are sore']}
 /* the built-in answer as text, or null when the question is not one it knows (and a fallback is not wanted) */
+function lcIntent(text){
+  var q=String(text).toLowerCase().replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim();
+  for(var i=0;i<CK.length;i++){if(CK[i][1].test(q))return CK[i][0]}
+  return null;
+}
 function localCoach(text,allowFallback,onlySafety){
-  var q=' '+String(text).toLowerCase().replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim()+' ',k=null;
-  for(var i=0;i<CK.length;i++){if(CK[i][1].test(q.trim())){k=CK[i][0];break}}
+  var q=String(text).replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim(),k=lcIntent(q);
   /* with an AI coach loaded, only the safety topics are answered here */
   if(onlySafety&&['sos','low','body','pain'].indexOf(k)<0)k=null;
   var L=k?lcReply(k,q):null;
@@ -3694,6 +3719,31 @@ function localBrief(){
 }
 /* English lines from the built-in coach, translated one line at a time (the chat box is marked data-notr for Claude's replies) */
 function localT(text){return String(text).split('\n').map(function(l){var m=/^(\s*[-*]\s+)(.*)$/.exec(l);return m?m[1]+T(m[2]):T(l)}).join('\n')}
+/* two or three questions that naturally come next, shown under the newest answer */
+var FOLLOW={
+  how:['Review my week','Explain today’s session'],week:['How am I doing?','Explain today’s session'],today:['How do Top Sets work?','What should I eat after training?'],
+  missed:['How am I doing?','Explain today’s session'],food:['What should I eat before training?','How much water should I drink?'],sore:['Explain today’s session','How do rest days work?'],
+  pain:['How do rest days work?','Explain today’s session'],sleep:['What should I eat after training?','How am I doing?'],level:['Explain today’s session','How do Top Sets work?'],
+  top:['Explain today’s session','How am I doing?'],test:['How am I doing?','Explain today’s session'],xp:['How am I doing?','Review my week'],tired:['Explain today’s session','How do rest days work?']
+};
+function followUps(list,text){
+  var old=list.querySelector('.fup');if(old)old.remove();
+  var k=lcIntent(text),qs=FOLLOW[k]||['How am I doing?','Explain today’s session','My muscles are sore'];
+  var d=document.createElement('div');d.className='qchips fup';
+  d.innerHTML=qs.map(function(q){return '<button type="button" data-q="'+esc(q)+'">'+esc(T(q))+'</button>'}).join('');
+  list.appendChild(d);list.scrollTop=list.scrollHeight;
+}
+/* a small speaker on each answer: reads it out in the chat's language */
+function sayBtn(){return '<button type="button" class="sayb" data-say="1" aria-label="Read aloud"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>'}
+function readAloud(el){
+  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
+  var clone=el.cloneNode(true);[].slice.call(clone.querySelectorAll('button,.acts,.memo')).forEach(function(x){x.remove()});
+  var text=clone.innerText.replace(/\s+/g,' ').trim().slice(0,600);if(!text)return;
+  try{
+    speechSynthesis.cancel();var code=vinfo(clang())[2],u=new SpeechSynthesisUtterance(text),vo=pickVoice(code);
+    u.lang=code;if(vo)u.voice=vo;u.rate=1.0;speechSynthesis.speak(u);
+  }catch(e){}
+}
 
 /* ================= AI coach on this device =================
    On the real website (not inside Claude) a small language model can run in the browser itself through WebLLM:
@@ -3709,11 +3759,21 @@ function daiPick(){var m=navigator.deviceMemory;return (m&&m<6)?'small':'better'
 function daiImport(){if(!DAI.lib)DAI.lib=(new Function('u','return import(u)'))(DAI_LIB).catch(function(e){DAI.lib=null;throw e});return DAI.lib}
 function daiLoad(key){
   var M=DAI_MODELS[key];if(!M||DAI.state==='loading')return;
-  DAI.state='loading';DAI.pct=0;DAI.model=key;DAI.err='';daiPaint();
+  DAI.state='loading';DAI.pct=0;DAI.model=key;DAI.err='';DAI.doneMB=0;DAI.totalMB=0;DAI.phase='download';daiPaint();
   daiImport().then(function(w){
     DAI.w=w;return daiConfig(w,M);
   }).then(function(cfg){
-    var opts={initProgressCallback:function(r){DAI.pct=Math.max(DAI.pct,Math.round((r&&r.progress||0)*100));daiPaint()}};
+    /* the model's own file list gives the total size, so the card can say "120 MB of 265 MB" */
+    var base=cfg?cfg.model_list[0].model:'https://huggingface.co/mlc-ai/'+M.id+'/resolve/main/';
+    fetch(base+'tensor-cache.json').then(function(r){return r.ok?r.json():null}).then(function(j){
+      var recs=j&&j.records||[];DAI.totalMB=Math.round(recs.reduce(function(a,x){return a+(x.nbytes||0)},0)/1048576);daiPaint();
+    }).catch(function(){});
+    var opts={initProgressCallback:function(r){
+      var t=String(r&&r.text||''),m=/(\d+(?:\.\d+)?)\s*MB fetched/i.exec(t);
+      if(m)DAI.doneMB=Math.max(DAI.doneMB,Math.round(+m[1]));
+      DAI.phase=/from cache|cache\[/i.test(t)&&!/fetched/i.test(t)?'cache':/GPU|shader|WebGPU/i.test(t)?'gpu':'download';
+      DAI.pct=Math.max(DAI.pct,Math.round((r&&r.progress||0)*100));daiPaint();
+    }};
     if(cfg)opts.appConfig=cfg;
     return DAI.w.CreateMLCEngine(M.id,opts);
   }).then(function(e){
@@ -3754,7 +3814,11 @@ function daiCard(){
 function daiInner(){
   var pick=daiPick(),b=DAI_MODELS.better,s=DAI_MODELS.small;
   if(DAI.state==='ready')return '<p class="p0">The AI coach is ready on this device.</p><p class="note">It knows your plan and progress. Nothing you type leaves the phone.</p><p><button type="button" class="linkbtn" id="daiRm">Remove the AI coach</button></p>';
-  if(DAI.state==='loading')return '<p class="p0">Downloading the AI coach… '+DAI.pct+'%</p><div class="xptrack"><i style="width:'+DAI.pct+'%"></i></div><p class="note">The first time can take several minutes. After that it opens from the phone’s storage.</p>';
+  if(DAI.state==='loading'){
+    var line=DAI.phase==='gpu'?'Starting the AI coach on the graphics chip…':DAI.phase==='cache'?'Loading the AI coach from this phone’s storage… '+DAI.pct+'%'
+      :DAI.totalMB?'Downloading the AI coach… '+Math.min(DAI.doneMB,DAI.totalMB)+' MB of '+DAI.totalMB+' MB ('+DAI.pct+'%)':'Downloading the AI coach… '+DAI.pct+'%';
+    return '<p class="p0">'+line+'</p><div class="xptrack"><i style="width:'+DAI.pct+'%"></i></div><p class="note">The first time can take several minutes. After that it opens from the phone’s storage.</p>';
+  }
   if(DAI.state==='error')return '<p class="note">The AI coach could not start on this device. The built-in coach answers instead.</p><p class="note" data-notr>'+esc(DAI.err||'')+'</p><p><button type="button" class="pill ghost" id="daiRetry">Try again</button></p>';
   var btn=function(key,M,primary){return '<button type="button" class="pill'+(primary?'':' ghost')+'" data-dai="'+key+'">'+(key==='better'?'Download the better coach (about '+M.size+')':'Download the small coach (about '+M.size+')')+'</button>'};
   return '<p class="p0">A real AI coach can run on this phone, private and offline, built around your own plan. It is a one-time download.</p>'
@@ -3770,23 +3834,44 @@ function daiAsk(messages,onText){
     return drain();
   }).then(function(t){DAI.busy=false;return t},function(e){DAI.busy=false;if(full)return full;throw e});
 }
+/* a short, strict brief written for a small model: the rules it must keep, then the facts about this person */
 function daiSystem(){
-  /* the same rules and data as Claude, minus the page tools the device model does not have */
-  return coachRules().replace(/Looking things up:[^\n]*\n/,'')+'\n\n'+coachData()+'\n\nYou are chatting with '+st.p.nick+'. Keep every reply short and friendly.';
+  var teen=st.p.age<18,lang=clang();
+  return 'You are Coach inside the Level-Up home-workout app, talking to one person. Be warm, clear and brief: 2 to 5 short sentences, under 80 words, plain everyday words, no headings, no emojis.\n'
+    +'Rules:\n'
+    +'1. Use only the FACTS below and the facts in the message. Never invent numbers, exercises, dates or results. If something is not in the facts, say you do not know.\n'
+    +'2. Talk only about their training, plan, exercise form, recovery, sleep, food for training and their daily routine. For anything else, say in one friendly sentence that you only help with training, food and their day.\n'
+    +'3. Never write a new program. To change difficulty they tap Harder or Easier on the exercise card; on busy days they do the 15-minute version.\n'
+    +'4. Sharp pain, joint pain, chest pain, fainting or dizziness: say stop and '+(teen?'tell a parent, then see a doctor':'see a doctor')+'. Never diagnose.\n'
+    +'5. '+(teen?'They are under 18: never mention calories, dieting, fasting, weight loss or gain, supplements or protein powder, and never comment on their weight or looks.':'No crash diets or fasting. Food first; supplements only if asked.')+'\n'
+    +'6. Never ask for their real name, school, address, phone number or photos.\n'
+    +'7. If a next step helps, end with at most one button line written exactly like [[open:progress]], [[open:plan]], [[open:day:mon]] (a day code: mon tue wed thu fri sat sun) or [[open:form:ID]] with an ID from EXERCISE IDS.\n'
+    +'8. If they tell you something lasting about themselves (a sport and its days, a routine, a food they dislike), add one line [[remember:short note]].\n'
+    +(lang!=='en'?'9. Reply in '+vname(lang)+', simple spoken style. Keep exercise names in English.\n':'')
+    +'\nFACTS\n'+coachData();
+}
+/* the built-in coach's own answer rides along as the facts for this question, so the numbers come out right */
+function daiFacts(text){
+  var f=localCoach(text,false,false);
+  if(!f)return '';
+  return '\n\nFacts from the app for this question (use these numbers; put them in your own words):\n'+f.replace(/\[\[[^\]]*\]\]\n?/g,'').replace(/[⁣]/g,'');
 }
 function daiChat(text,list,c){
   var ai=document.createElement('div');ai.className='msg ai';ai.innerHTML='<span class="thinking">'+esc(T('Coach is thinking…'))+'</span>';list.appendChild(ai);list.scrollTop=list.scrollHeight;
-  var msgs=[{role:'system',content:daiSystem()}].concat(c.chat.slice(-7).map(function(m){return {role:m.role,content:String(m.content).slice(0,1200)}}));
+  var hist=c.chat.slice(-7).map(function(m){return {role:m.role,content:String(m.content).replace(/[⁣]/g,'').slice(0,900)}});
+  if(hist.length)hist[hist.length-1].content+=daiFacts(text);
+  var msgs=[{role:'system',content:daiSystem()}].concat(hist);
   busy(true);
   daiAsk(msgs,function(t){ai.innerHTML=aiHtml(t);list.scrollTop=list.scrollHeight}).then(function(t){
     t=String(t||'').trim();
     if(!t){ai.remove();return}
     rememberAll(coachParse(t).mem);ai.innerHTML=aiHtml(t);
     c.chat.push({role:'assistant',content:t,dai:1});if(c.chat.length>40)c.chat=c.chat.slice(-40);save();
+    followUps(list,text);
   },function(e){
     ai.remove();
     var loc=localCoach(text,true),lo=document.createElement('div');lo.className='msg ai';lo.innerHTML=aiHtml(localT(loc));list.appendChild(lo);
-    c.chat.push({role:'assistant',content:loc,local:1});save();
+    c.chat.push({role:'assistant',content:loc,local:1});save();followUps(list,text);
   }).then(function(){busy(false);list.scrollTop=list.scrollHeight});
 }
 function daiBrief(out){
@@ -3841,7 +3926,7 @@ function dayBody(d){
   return h;
 }
 function chatSection(c){
-  var msgs=c.chat.slice(-30).map(function(m){return '<div class="msg '+(m.role==='user'?'me':'ai')+'">'+(m.role==='user'?esc(m.content):m.local?aiHtml(localT(m.content)):aiHtml(m.content))+'</div>'}).join('');
+  var msgs=c.chat.slice(-30).map(function(m){return '<div class="msg '+(m.role==='user'?'me':'ai')+'">'+(m.role==='user'?esc(m.content):(m.local?aiHtml(localT(m.content)):aiHtml(m.content))+sayBtn())+'</div>'}).join('');
   var Q=['How am I doing?','Review my week','What should I eat after training?','Explain today’s session','I missed a session. What now?','My muscles are sore'];
   var notes=notesOf();
   return '<section class="cbox"><header><b>Ask Coach</b>'+(c.chat.length?'<button type="button" class="linkbtn" id="cClear">Clear chat</button>':'')+'</header>'
@@ -3872,9 +3957,9 @@ function coachSend(text){
   /* the built-in coach first; Claude only for a question it does not know, and only where Claude can answer */
   var ready=DAI.state==='ready',loc=localCoach(text,!SAMPLE&&!ready,ready);
   if(loc){
-    var lo=document.createElement('div');lo.className='msg ai';lo.innerHTML=aiHtml(localT(loc));list.appendChild(lo);
+    var lo=document.createElement('div');lo.className='msg ai';lo.innerHTML=aiHtml(localT(loc))+sayBtn();list.appendChild(lo);
     c.chat.push({role:'assistant',content:loc,local:1});if(c.chat.length>40)c.chat=c.chat.slice(-40);save();
-    list.scrollTop=list.scrollHeight;return;
+    followUps(list,text);return;
   }
   if(ready){daiChat(text,list,c);return}
   var ai=document.createElement('div');ai.className='msg ai';ai.innerHTML='<span class="thinking">'+esc(T('Coach is thinking…'))+'</span>';list.appendChild(ai);list.scrollTop=list.scrollHeight;
@@ -3994,6 +4079,7 @@ function coachClick(ev){
   if(b.id==='daiRetry'){daiLoad(DAI.model||daiPick());return}
   if(b.id==='cClear'){c.chat=[];save();rerender(true);return}
   if((a=b.getAttribute('data-q'))){coachSend(a);return}
+  if(b.hasAttribute('data-say')){readAloud(b.closest('.msg'));return}
   /* a button the coach suggested: it only acts on this tap */
   if((a=b.getAttribute('data-act'))){
     var q=a.split(':');
