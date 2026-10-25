@@ -576,6 +576,16 @@ html[lang=ta] .day span{font-stretch:75%;font-size:10.5px;padding:0 1px}
 .guide.paused .gbig{opacity:.4}
 body.guiding{overflow:hidden}
 .gstartbox{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 14px}
+.lrbox{display:grid;gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.lr{display:grid;gap:8px}
+.lr .chips2 .ch{font-size:13px}
+.lrmsg{margin:0;font-size:14px;color:var(--ink2)}
+.lrmsg .linkbtn{padding:0 2px;font-size:13.5px}
+details.chlv{margin-top:6px;padding:0;border:0;background:transparent}
+details.chlv > summary{font-size:13px;color:var(--muted);cursor:pointer}
+details.chlv .lvl{margin-top:8px}
+.planline{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:14px;color:var(--ink2)}
+.planline span{font-family:var(--f-m);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .gstartbox small{flex:1 1 200px;color:var(--muted);font-size:13px;line-height:1.4}
 .cele{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px;background:var(--scrim);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .cele canvas{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
@@ -1355,7 +1365,7 @@ var LU=(function(){
     ['A second pair of eyes','Ask a parent to watch or film your first set of each new exercise, and at the start of every block, to check your form.']
   ];
   var NOTES={
-    1:'Calibration week. Find the right level for every exercise: if the top number feels easy, tap Harder. Ask a parent to watch or film your first set of each new exercise.',
+    1:'Week 1: learn the moves. After each exercise, tap how it went and the app sets your levels for you. Ask a parent to watch or film your first set of each new exercise.',
     5:'New block. Several exercises move up a level, and your main lift may get an extra round. Ask a parent to watch the first set of each new exercise.',
     9:'Strength block. More one-leg work and harder levels. Form first: ask a parent to watch the first set of each new exercise.',
     13:'Sharpen block. Rests are 15 seconds shorter. Ask a parent to watch the first set of each new exercise.',
@@ -1577,12 +1587,102 @@ function setup(){
   todayWeek=!started?1:finished?LU.WEEKS:Math.floor(diff/7)+1;
   todayIdx=(started&&!finished)?diff%7:-1;
   viewW=todayWeek;cur=todayIdx>=0?todayIdx:(finished?PL.testDay:PL.sel[0]);
+  try{applyPending()}catch(e){}
 }
 function rec(w,k){
   var W=st.wk[w]||(st.wk[w]={});
   var r=W[k]||(W[k]={});
-  if(!r.w)r.w=[];if(!r.c)r.c=[];if(!r.r)r.r=[];if(!r.h)r.h=[];if(!r.e)r.e={};if(!r.t)r.t={};
+  if(!r.w)r.w=[];if(!r.c)r.c=[];if(!r.r)r.r=[];if(!r.h)r.h=[];if(!r.e)r.e={};if(!r.t)r.t={};if(!r.m)r.m=[];if(!r.lr)r.lr={};
   return r;
+}
+/* ---------- the behaviour layer: short days, comebacks, plans and levels that move by themselves ----------
+   Built on the research in reports/: most people quit in the first month, a missed session makes the next miss more likely,
+   and beginners misjudge difficulty, so the app keeps a short day that counts, welcomes people back, and sets levels itself. */
+/* the short day: two ticks that count as a full session, at most twice a week */
+/* kind but firm: one short day a week, worth half the XP, and never a way to earn the comeback bonus */
+var SHORTMAX=1;
+function shortItems(){return [[LU.MINVER[0],'10 min'],[LU.MINVER[1],'5 min']]}
+function shortsInWeek(w){var n=0,W=st.wk[w]||{};DAYS.forEach(function(d){if(W[d.k]&&W[d.k].short)n++});return n}
+/* the day before (w,i) in the plan, as [week, index], or null before week 1 */
+function prevDay(w,i){return i>0?[w,i-1]:w>1?[w-1,6]:null}
+/* true when the last planned session before this day was missed (not done, not skipped), within two weeks */
+function missedBefore(w,i){
+  var p=[w,i];
+  for(var n=0;n<14;n++){
+    p=prevDay(p[0],p[1]);if(!p)return false;
+    if(!isPlanned(p[0],p[1]))continue;
+    if(dateOfIdx(p[0],p[1])<CREATED)return false;
+    var r=(st.wk[p[0]]||{})[DAYS[p[1]].k];
+    if(totals(p[0],p[1]).complete||(r&&r.skip))return false;
+    return true;
+  }
+  return false;
+}
+var COMEBACK=40;
+/* ---------- levels that move by themselves ----------
+   After the last round of an exercise the person says how it went. The app trusts what was done more than how it felt:
+   the top of the range in two sessions in a row moves the exercise one level up (once a week at most), not reaching the
+   range or any pain moves it one level down. Every change waits until the next day and can be undone the same day. */
+var LR=[['top','Top number every round'],['in','In the range'],['low','Could not reach it'],['hurt','It hurt']];
+function prevAnswer(id,w,i){
+  var lim=+dateOfIdx(w,i),best=null,bestD=-1;
+  Object.keys(st.wk).forEach(function(wk){var W=st.wk[wk];DAYS.forEach(function(d){var r=W[d.k];if(!r||!r.lr||!r.lr[id])return;var t=+dateOfIdx(+wk,d.i);if(t<lim&&t>bestD){bestD=t;best=r.lr[id]}})});
+  return best;
+}
+function lrAnswer(id,val,s,wi){
+  if(!LAD[id])return;
+  var cl=lvOf(id,wi.block),lad=LAD[id],max=lad.L.length-1,msg;
+  st.pend=st.pend||{};st.auto=st.auto||{};
+  if(st.pend[id]&&st.pend[id].date===isoD(NOW))delete st.pend[id];
+  function move(to,t){st.pend[id]={to:lad.L[to].i,date:isoD(NOW)};return {t:t,to:to}}
+  if(val==='hurt')msg=cl>0?move(cl-1,'hurt'):{t:'hurt0'};
+  else if(val==='low')msg=cl>0?move(cl-1,'down'):{t:'down0'};
+  else if(val==='top'){
+    if(cl>=max)msg={t:'max'};
+    else if(prevAnswer(id,viewW,cur)==='top'&&st.auto[id]!==viewW){msg=move(cl+1,'up');st.auto[id]=viewW}
+    else msg={t:'wait'};
+  }
+  else msg={t:'stay'};
+  s.lr[id]=val;s.lrm=s.lrm||{};s.lrm[id]=msg;save();
+}
+/* a level change waits until the day after it was earned, so today's card still shows what was done */
+function applyPending(){
+  var P=st.pend;if(!P||!LAD)return;var changed=false,blk=LU.weekInfo(todayWeek).block;
+  Object.keys(P).forEach(function(id){var p=P[id];if(!p||p.date>=isoD(NOW))return;if(LAD[id]&&LAD[id].L.some(function(L){return L.i===p.to})){st.lv[id]={o:p.to,b:blk};changed=true}delete P[id]});
+  if(changed||Object.keys(P).length===0)persist();
+}
+function lrRows(c,s,wi){
+  return '<div class="lrbox">'+c.slots.map(function(id){
+    var lvl=lvOf(id,wi.block),L=LAD[id].L[lvl],v=s.lr[id],m=(s.lrm||{})[id],msg='';
+    if(m){
+      var nx=m.to!=null?LAD[id].L[m.to].n:'';
+      msg=m.t==='up'?'Next time: '+U(nx)+'. You earned it.'
+        :m.t==='down'?'Next time: '+U(nx)+'. Build it back up from there.'
+        :m.t==='hurt'?'Next time: '+U(nx)+'.'
+        :m.t==='hurt0'||m.t==='down0'?'This is already the easiest level.'
+        :m.t==='wait'?'Great. Hit the top number next session too and you move up.'
+        :m.t==='max'?'You are at the top level for this exercise. Keep the form clean.'
+        :m.t==='stay'?'Good. Stay at this level and aim for one more rep.'
+        :m.t==='undone'?'Okay. Your level stays the same.':'';
+    }
+    var undo=m&&(m.t==='up'||m.t==='down'||m.t==='hurt')&&st.pend&&st.pend[id]?' <button type="button" class="linkbtn" data-lru="'+id+'">Undo</button>':'';
+    var hurt=v==='hurt'?'<p class="mynote">'+esc(who('Muscle burn is normal. Sharp pain, joint pain, or any pain that lasts more than 2 days or wakes you at night means stop that exercise and tell a parent. If you are in a growth spurt, keep the same levels and do half the jumps and sprints.'))+'</p>':'';
+    return '<div class="lr"><span class="flab">How did '+esc(U(L.n))+' go?</span><div class="chips2">'
+      +LR.map(function(x){return '<button type="button" class="ch" data-lr="'+id+':'+x[0]+'"'+pressed(v===x[0])+'>'+x[1]+'</button>'}).join('')+'</div>'
+      +(msg?'<p class="lrmsg">'+esc(msg)+undo+'</p>':'')+hurt+'</div>';
+  }).join('')+'</div>';
+}
+/* the whole plan changes only after the same feeling repeats: two hard sessions in a row offer shorter sessions */
+function feelRun(){
+  var L=[];
+  for(var w=1;w<=LU.WEEKS;w++)DAYS.forEach(function(d){if(kindOf(w,d.i)==='rest')return;var r=(st.wk[w]||{})[d.k];if(r&&r.f&&totals(w,d.i).complete)L.push(r.f)});
+  return L;
+}
+function feelPattern(){
+  var L=feelRun(),n=L.length;
+  if(n>=2&&L[n-1]==='hard'&&L[n-2]==='hard')return st.p.size>1?'<div class="tip"><b>Two hard sessions in a row.</b> Want shorter sessions for a while? Your levels stay the same.<p><button type="button" class="pill ghost" id="feelShort">Make my sessions shorter</button></p></div>':'';
+  if(n>=3&&L[n-1]==='easy'&&L[n-2]==='easy'&&L[n-3]==='easy')return '<div class="tip"><b>Three easy sessions in a row.</b> After each exercise, tap Top number every round when you hit it. Two in a row and that exercise moves up.</div>';
+  return '';
 }
 
 /* ---------- the week ---------- */
@@ -1702,6 +1802,9 @@ function totals(w,i){
     total+=wl+cl;done+=cnt(s.w.slice(0,wl))+cnt(s.c.slice(0,cl));
     if(k==='test'){
       var tn=PL.tests.length;need=Math.min(4,tn);md=Math.min(testsLogged(w),tn);total+=tn;done+=md;
+    }else if(s.short){
+      /* a short day counts as the session once both of its parts are ticked */
+      total=2;need=2;md=done=cnt((s.m||[]).slice(0,2));
     }else{
       sessionCards(w,i).forEach(function(c){rounds(c.id,c.n)});
       total+=need;done+=md;
@@ -1795,8 +1898,9 @@ function paintHeader(){
   var ic=function(d){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+d+'"/></svg>'};
   $('streaks').innerHTML='<span class="sk s1'+(sk.cur?' lit':'')+'">'+ic('M12 3c.8 3.4 5 5.3 5 10a5 5 0 0 1-10 0c0-2.3 1.2-3.8 2.4-4.8.2 1.8 1.1 2.8 2.1 3.1C11.2 9.2 10.9 6.3 12 3z')+'<b>'+sk.cur+'</b><span>session streak</span></span>'
     +'<span class="sk s2'+(ws?' lit':'')+'">'+ic('M4 6.5h16V20H4zM4 10.5h16M8.5 4v4M15.5 4v4M9 15l2 2 4-4')+'<b>'+ws+'</b><span>week streak</span></span>'
-    +(sk.fz?'<span class="sk s3 lit">'+ic('M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9')+'<b>'+sk.fz+'</b><span>streak freeze'+(sk.fz>1?'s':'')+'</span></span>':'')
-    +(left>0?'<span class="sk mem">'+ic('M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-1.5-3-5-3-5-1s3 1 5 1c2 0 5 1 5-1s-3.5-2-5 1')+'<b>'+left+'</b><span>free day'+(left===1?'':'s')+' left</span></span>':'');
+    +(sk.fz?'<span class="sk s3 lit">'+ic('M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9')+'<b>'+sk.fz+'</b><span>streak freeze'+(sk.fz>1?'s':'')+'</span></span>':'');
+  /* the free-month countdown lives in the Plan tab only: a countdown in view every day is pressure */
+  void left;
   paintXP();
 }
 function paintTabs(){
@@ -1872,7 +1976,7 @@ function weekCard(){
 }
 function introCard(){
   return '<section class="tip"><b>Welcome to your plan, '+esc(U(st.p.nick))+'.</b><p>1. Tap the bubble after every round. The rest timer starts by itself.</p>'
-    +'<p>2. Each exercise has levels. Tap <b>Harder</b> when the top number feels easy and <b>Easier</b> when you cannot reach the bottom number.</p>'
+    +'<p>2. After each exercise, tap how it went. The app moves you up a level when you are ready, and down if it hurt.</p>'
     +'<p>3. In Peak weeks the last round is a <b>TOP</b> round: do as many clean reps as you can, and stop when form breaks.</p>'
     +'<p>4. '+(st.p.age<18?'Show this plan to a parent, and ask them to watch your first session.':'Film your first set of each new move to check your form.')+'</p>'
     +'<p>5. Open <b>Coach</b> for your check-in and your day plan, and <b>Form</b> to check your form with the camera.</p>'
@@ -1900,11 +2004,12 @@ function exRow(id,idx,c,wi,multi,edit){
   var x='';
   if(L.load)x+=bpHtml(id,lvl);
   if(timed)x+='<button type="button" class="tbtn" data-s="'+tgt+'" data-n="'+esc(L.n)+'">▶ Start '+tgt+' s'+(L.u==='sec per side'?' (each side)':'')+'</button>';
+  /* levels move by themselves from the "how did it go" answers; changing them by hand sits behind a small link */
   if(sl.L.length>1&&edit){
     var nxt=lvl<sl.L.length-1?sl.L[lvl+1].n:'',prv=lvl>0?sl.L[lvl-1].n:'';
-    x+='<div class="lvl" role="group" aria-label="Level for '+esc(U(L.n))+'"><span class="lv">Level '+(lvl+1)+' of '+sl.L.length+'</span>'
+    x+='<details class="chlv"><summary>Change level</summary><div class="lvl" role="group" aria-label="Level for '+esc(U(L.n))+'"><span class="lv">Level '+(lvl+1)+' of '+sl.L.length+'</span>'
       +'<button type="button" class="lb" data-a="easy" data-id="'+id+'" aria-label="Easier: '+esc(U(prv))+'"'+(lvl===0?' disabled':'')+'>Easier</button>'
-      +'<button type="button" class="lb" data-a="hard" data-id="'+id+'" aria-label="Harder: '+esc(U(nxt))+'"'+(lvl>=sl.L.length-1?' disabled':'')+'>Harder</button></div>';
+      +'<button type="button" class="lb" data-a="hard" data-id="'+id+'" aria-label="Harder: '+esc(U(nxt))+'"'+(lvl>=sl.L.length-1?' disabled':'')+'>Harder</button></div></details>';
   }
   if(x)h+='<div class="exx">'+x+'</div>';
   return h+'</div>';
@@ -1928,6 +2033,7 @@ function cardHtml(c,s,wi,edit){
   h+=c.slots.map(function(id,i){return exRow(id,i,c,wi,multi,edit)}).join('');
   if(c.carry)h+='<p class="xtra">After each round: suitcase carry. Walk 30 s with your loaded backpack or one dumbbell in one hand, and switch hands every round.</p>';
   h+=bubbles({id:c.id,n:n,rest:rest,nm:names.join(' + '),top:tops.length>0},done);
+  if(edit&&done>=n)h+=lrRows(c,s,wi);
   if(tops.length){
     h+='<div class="topbox"><div class="th"><b>TOP SET</b><span>Last round: as many clean reps as you can. Stop the moment form breaks.</span></div>';
     tops.forEach(function(i){
@@ -1974,15 +2080,27 @@ function challengeHtml(ch,s,wi){
 function minver(){
   return '<details><summary>Too tired? Do the 15-minute version</summary><ul>'+LU.MINVER.map(function(t){return '<li>'+esc(t)+'</li>'}).join('')+'</ul></details>';
 }
+/* the short day: one block of easy rounds and a stretch, counted as the full session */
+function shortBody(s){
+  return '<div class="tip"><b>Short day.</b> 15 minutes still counts as a training day. Never zero.</div>'
+    +'<h2>Short session <small>about 15 min</small></h2>'+checkList(shortItems(),'m',s)
+    +'<p><button type="button" class="linkbtn" id="shortOff">Back to the full session</button></p><div id="feelbox"></div>';
+}
+function shortBtn(i){
+  var left=SHORTMAX-shortsInWeek(viewW);
+  if(viewW!==todayWeek||totals(viewW,i).complete||rec(viewW,DAYS[i].k).short)return '';
+  return left>0?'<button type="button" class="pill ghost" id="shortOn">Short day (15 min)</button>':'';
+}
 function trainBody(i,s,wi,edit){
+  if(s.short)return shortBody(s);
   var h='';
   h+='<h2>Warm-up <small>about '+(SZ().short?4:7)+' min · do this first</small></h2>'+checkList(warmList(viewW,i),'w',s);
-  if(!DRY&&!totals(viewW,i).complete)h+='<div class="gstartbox"><button type="button" class="pill" id="gstart">▶ Guided workout</button><small>Hands-free: the voice names every exercise, counts the tempo and runs the timers.</small></div>';
+  if(!DRY&&!totals(viewW,i).complete)h+='<div class="gstartbox"><button type="button" class="pill" id="gstart">▶ Guided workout</button>'+shortBtn(i)+(shortBtn(i)?'<small>Really short on time? One short day a week keeps your streak. It earns half the XP.</small>':'')+'</div>';
   h+='<h2>Workout <small>tap a bubble after each round</small></h2>';
   sessionCards(viewW,i).forEach(function(c){h+=cardOf(c,s,wi,edit)});
   var ch=chalFor(viewW,i);if(ch)h+=challengeHtml(ch,s,wi);
   h+='<h2>Cool-down <small>about '+(SZ().short?3:5)+' min · hold each stretch</small></h2>'+checkList(coolList(),'c',s);
-  h+='<div id="feelbox"></div>'+minver();
+  h+='<div id="feelbox"></div>';
   return h;
 }
 
@@ -2059,15 +2177,45 @@ function foot(k,s){
 }
 
 /* ---------- Train tab ---------- */
+/* the first win: a 10-minute taster for someone who has not trained yet and has no session today */
+var TASTER=[['March or jog in place','2 min'],['Bodyweight squats','10 slow reps'],['Incline push-up','8 reps'],['Plank','20 s'],["Child's pose",'30 s']];
+function sessionsDone(){var t=0;for(var w=1;w<=LU.WEEKS;w++)t+=weekStats(w).sess;return t}
+function tasterCard(){
+  var T0=st.taster||{d:[]},done=!!T0.done;
+  if(done&&T0.done!==isoD(NOW))return '';
+  return '<section class="cbox"><header><b>Your first win</b><span class="pbn">10 min</span></header>'
+    +(done?'<p class="p0"><b>Taster done.</b> You know the moves now. Your first full session is next.</p>'
+      :'<p class="note">A short taster to learn the moves. Easy pace. Stop if anything hurts.</p>')
+    +'<div class="list">'+TASTER.map(function(it,i){var how=LU.HOW[it[0]];
+      return '<label class="chk"><input type="checkbox" data-tz="'+i+'"'+(T0.d[i]?' checked':'')+'><span class="box" aria-hidden="true"></span><span class="tx">'+esc(it[0])+(how?'<small>'+esc(how)+'</small>':'')+'</span><span class="q">'+esc(it[1])+'</span>'+tbtn(it[0],it[1])+'</label>'}).join('')+'</div></section>';
+}
+/* what shows above today's session: a welcome back after a miss, the time-and-place plan, the taster and the level test */
+function todayExtras(i,k,s){
+  var h='',t=totals(viewW,i),age=st.p.age;
+  if(!s.skip&&!t.complete&&missedBefore(viewW,i)){
+    h+=k==='rest'?'<div class="tip"><b>Welcome back.</b> You missed your last session. Your next full session earns a +'+COMEBACK+' XP comeback bonus.</div>'
+      :'<div class="tip"><b>Welcome back.</b> You missed your last session. Today is the day to get back on track: finish the full session for a +'+COMEBACK+' XP comeback bonus.</div>';
+  }
+  if(k!=='rest'&&!t.complete){
+    if(st.p.when&&st.p.where)h+='<p class="planline"><span>Your promise</span> '+esc(whenLabel(st.p.when,age))+' · '+esc(whereLabel(st.p.where))+'</p>';
+    else h+='<section class="cbox"><header><b>Make it a habit</b></header><p class="note">People who pick a time and a place train more often.</p>'
+      +'<div class="field"><span class="flab">When will you train?</span>'+planChips('when',st.p.when,function(x){return 'data-k="when" data-pw="'+x+'"'},age)+'</div>'
+      +'<div class="field"><span class="flab">Where will you train?</span>'+planChips('where',st.p.where,function(x){return 'data-k="where" data-pw="'+x+'"'},age)+'</div></section>';
+  }
+  if(k==='rest'&&!sessionsDone())h+=tasterCard();
+  if(st.p.skipTest&&todayWeek<=2&&k!=='test')h+='<div class="tip"><b>Find your real level.</b> The 5-minute level test sets every exercise to fit you.<p><button type="button" class="pill ghost" id="testLater">Take the level test</button></p></div>';
+  return h;
+}
 function trainView(){
   var i=cur,D=DAYS[i],s=rec(viewW,D.k),wi=LU.weekInfo(viewW),k=kindOf(viewW,i),L=look(viewW,i),edit=(viewW===todayWeek),h='';
   setAcc(L.c,L.o);
   if(!st.ui.intro)h+=introCard();
-  if(!started&&viewW===1)h+='<div class="tip"><b>Your plan starts Monday '+LU.fmtDate(START)+'.</b> Until then, read through your sessions and practise the moves slowly.</div>';
+  if(!started&&viewW===1){h+='<div class="tip"><b>Your plan starts Monday '+LU.fmtDate(START)+'.</b> Until then, read through your sessions and practise the moves slowly.</div>';if(!sessionsDone())h+=tasterCard()}
   else if(started&&viewW===1&&dateOfIdx(1,i)<CREATED)h+='<div class="tip">This day was before you made your plan, so it does not count against you. Your first day was '+LU.fmtDate(CREATED)+'.</div>';
   else if(viewW<todayWeek&&started)h+='<div class="tip">You are looking at a past week. You can still tick things you forgot.</div>';
   else if(viewW>todayWeek&&started)h+='<div class="tip">Preview of a future week. Levels can only be changed in the current week.</div>';
   h+=band(i,L,k);
+  if(started&&viewW===todayWeek&&i===todayIdx)h+=todayExtras(i,k,s);
   if(viewW===todayWeek&&i===todayIdx)h+='<div id="questBox">'+questInner()+'</div>';
   h+='<div id="donebox"></div>'+weekCard();
   if(s.skip)h+=skipCard();
@@ -2091,11 +2239,17 @@ function paintDone(){
   if(t.complete&&DONEWAS.key===key&&DONEWAS.was===false){
     var sk=streaks();
     if(k==='rest')celebrate('Rest day done!','Recovery is part of the plan.','+20 XP');
-    else{celebrate('Session complete!',sk.cur>1?sk.cur+' sessions in a row. Keep it going.':'Your streak has started.','+50 XP');say('Session complete. Great work.',true)}
+    else{
+      var sd=rec(viewW,DAYS[cur].k),cb=!sd.short&&missedBefore(viewW,cur);
+      celebrate(cb?'Welcome back!':'Session complete!',cb?'Comeback bonus +'+COMEBACK+' XP.':sk.cur>1?sk.cur+' sessions in a row. Keep it going.':'Your streak has started.','+'+((sd.short?25:50)+(cb?COMEBACK:0))+' XP');
+      say('Session complete. Great work.',true);
+    }
   }
   DONEWAS={key:key,was:t.complete};
   if(!t.complete){el.innerHTML='';paintFeel();return}
-  el.innerHTML='<div class="tip donetip"><b>'+(k==='rest'?'Rest day done.':'Session complete.')+'</b> '+CHEERS[(viewW+cur)%CHEERS.length]+'<p>Next: '+esc(nextText(cur,viewW))+'</p></div>';
+  /* end on a high: what they did, how far they have come, and when the next one is */
+  var ws=weekStats(viewW),tot=sessionsDone(),recap=k==='rest'?'':'<p>This week: '+ws.sess+' of '+st.p.n+' sessions done.</p><p>'+(tot>1?'You have done '+tot+' sessions in total.':'Your first session is done.')+'</p>';
+  el.innerHTML='<div class="tip donetip"><b>'+(k==='rest'?'Rest day done.':'Session complete.')+'</b> '+CHEERS[(viewW+cur)%CHEERS.length]+recap+'<p>Next: '+esc(nextText(cur,viewW))+'</p></div>';
   paintFeel();
 }
 function paintFeel(){
@@ -2103,7 +2257,7 @@ function paintFeel(){
   var s=rec(viewW,DAYS[cur].k),t=totals(viewW,cur);
   if(!t.complete||kindOf(viewW,cur)==='rest'){el.innerHTML='';return}
   var f=s.f,opt=LU.FEEL.filter(function(o){return o.k===f})[0];
-  el.innerHTML='<h2>How did it feel?</h2><div class="feel">'+LU.FEEL.map(function(o){return '<button type="button" class="fbtn" data-f="'+o.k+'" aria-pressed="'+(f===o.k)+'">'+o.t+'</button>'}).join('')+'</div>'+(opt?'<p class="tip" style="margin-top:10px">'+esc(opt.tip)+'</p>':'');
+  el.innerHTML='<h2>How did it feel?</h2><div class="feel">'+LU.FEEL.map(function(o){return '<button type="button" class="fbtn" data-f="'+o.k+'" aria-pressed="'+(f===o.k)+'">'+o.t+'</button>'}).join('')+'</div>'+(opt?'<p class="tip" style="margin-top:10px">'+esc(opt.tip)+'</p>':'')+(f?feelPattern():'');
 }
 
 /* ---------- Progress tab ---------- */
@@ -2175,7 +2329,7 @@ function whyList(p,pl){
   var mins=withPlan(p,pl,function(){return avgMinutes(1)}),SZp=LU.SIZES[p.size]||LU.SIZES[3];
   out.push('About '+mins+' minutes a session: '+U(SZp.desc)+'.');
   if(p.recSize&&p.size<p.recSize)out.push('You chose shorter sessions than your level test suggested.');
-  if(p.skipTest||!p.test)out.push('No level test, so every exercise starts at its easiest level. Tap Harder in the tracker when it feels easy.');
+  if(p.skipTest||!p.test)out.push('No level test yet, so every exercise starts at an easy level. The app moves you up as you hit the top numbers.');
   else out.push('Your level test starts push-ups at '+U(pl.LAD.pushup.L[pl.start.pushup].n)+', squats at '+U(pl.LAD.squat.L[pl.start.squat].n)+' and plank at '+U(pl.LAD.plank.L[pl.start.plank].n)+'.');
   var eq=(p.eq||[]).map(function(e){return EQNAME[e]});
   if(!eq.length)out.push('No equipment: every move uses your bodyweight, a wall, a towel, a broom or a sturdy table.');
@@ -2283,7 +2437,16 @@ var LTEST=[
 var WD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 var D=null,step=0,obErr='',editing=false;
 
-function newDraft(){return {safe:{},cleared:false,nick:'',age:'',parentOk:false,h:'',w:'',test:{knee:'',full:'',squat:'',plank:''},skipTest:false,eq:[],n:null,days:[],comfort:null,size:null,goals:[],pain:[],painFlag:null,painCleared:false,startMode:'now'}}
+function newDraft(){return {safe:{},cleared:false,nick:'',age:'',parentOk:false,h:'',w:'',test:{knee:'',full:'',squat:'',plank:''},skipTest:false,eq:[],n:null,days:[],comfort:null,size:null,goals:[],pain:[],painFlag:null,painCleared:false,startMode:'now',when:null,where:null}}
+/* the time-and-place plan: an if-then plan raises how often people actually train */
+var WHEN=[['morning','In the morning'],['after','After school'],['evening','In the evening']];
+var WHERE=[['room','In my room'],['home','In the living room'],['out','On the terrace or in the yard'],['park','In a park']];
+function whenLabel(k,age){if(k==='after'&&age>=18)return 'After school or work';var x=WHEN.filter(function(w){return w[0]===k})[0];return x?x[1]:''}
+function whereLabel(k){var x=WHERE.filter(function(w){return w[0]===k})[0];return x?x[1]:''}
+function planChips(kind,cur,attr,age){
+  var L=kind==='when'?WHEN:WHERE;
+  return '<div class="chips2">'+L.map(function(x){return '<button type="button" class="ch" '+attr(x[0])+pressed(cur===x[0])+'>'+esc(kind==='when'?whenLabel(x[0],age):x[1])+'</button>'}).join('')+'</div>';
+}
 function draftFrom(p){
   var d=newDraft(),t=p.test;
   d.safe=JSON.parse(JSON.stringify(p.safe||{}));d.cleared=!!p.cleared;d.nick=p.nick||'';d.age=p.age?String(p.age):'';d.parentOk=!!p.parentOk;
@@ -2291,6 +2454,7 @@ function draftFrom(p){
   if(t)d.test={knee:String(t.knee),full:String(t.full),squat:String(t.squat),plank:String(t.plank)};
   d.skipTest=!!p.skipTest;d.eq=(p.eq&&p.eq.length)?p.eq.slice():['none'];d.n=p.n;d.days=p.days.slice();d.comfort=(p.recSize&&p.size<p.recSize)?'no':'yes';d.size=p.size||null;d.goals=(p.goals||[]).slice();
   d.pain=(p.pain&&p.pain.length)?p.pain.slice():['none'];d.painFlag=p.painFlag===undefined?null:p.painFlag;d.painCleared=!!p.painCleared;
+  d.when=p.when||null;d.where=p.where||null;
   return d;
 }
 function profileFromDraft(){
@@ -2298,7 +2462,7 @@ function profileFromDraft(){
     test:D.skipTest?null:{knee:numOrNull(D.test.knee)||0,full:numOrNull(D.test.full)||0,squat:numOrNull(D.test.squat)||0,plank:numOrNull(D.test.plank)||0},
     skipTest:D.skipTest,eq:D.eq.filter(function(e){return e!=='none'}),n:D.n,days:D.days.slice().sort(function(a,b){return a-b}),
     goals:D.goals.slice(),pain:D.pain.filter(function(x){return x!=='none'}),painFlag:D.painFlag,painCleared:D.painCleared,
-    safe:D.safe,cleared:D.cleared};
+    safe:D.safe,cleared:D.cleared,when:D.when,where:D.where};
   /* the level test picks the session size; a shorter one only when the person said that time is too long */
   p.recSize=LU.recSize(p);
   p.size=(D.comfort==='no'&&D.size&&D.size<p.recSize)?D.size:p.recSize;
@@ -2339,7 +2503,7 @@ var OB={
       var b=t[4]==='cd'?'<button type="button" class="tbtn" data-cd="60" data-for="lt-'+t[0]+'">▶ 60 s timer</button>':t[4]==='sw'?'<button type="button" class="tbtn" data-sw="lt-'+t[0]+'">▶ Stopwatch</button>':'';
       return '<div class="ltest"><div class="lth"><b>'+t[1]+'</b><small>'+esc(t[3])+'</small></div><div class="ltin"><input class="num" id="lt-'+t[0]+'" type="number" inputmode="numeric" min="0" max="999" data-t="'+t[0]+'" value="'+esc(D.test[t[0]])+'" aria-label="'+t[1]+'"><span>'+t[2]+'</span>'+b+'</div></div>';
     }).join('');
-    h+='<label class="chk"><input type="checkbox" data-ck="skipTest"'+(D.skipTest?' checked':'')+'><span class="box" aria-hidden="true"></span><span class="tx">I cannot do the test right now. Start me at the easiest levels.<small>You can move levels up or down in the tracker any time.</small></span></label>';
+    if(D.only!=='test')h+='<label class="chk"><input type="checkbox" data-ck="skipTest"'+(D.skipTest?' checked':'')+'><span class="box" aria-hidden="true"></span><span class="tx">Skip the test for now. Start me at easy levels.<small>You can take it from the Train tab in your first two weeks. The app also moves your levels up as you hit the top numbers.</small></span></label>';
     return h;
   },
   equip:function(){
@@ -2356,6 +2520,10 @@ var OB={
       for(var j=1;j<s.length;j++)if(s[j]-s[j-1]===1)back=true;
       if(D.n===3&&back)h+='<div class="tip">Full-body days work best with a rest day in between. Two days in a row is okay if your week needs it.</div>';
       if(D.n===5)h+='<p class="note">Your last day becomes the Athletic day, and test day in test weeks.</p>';
+      var ag=numOrNull(D.age)||0;
+      h+='<div class="field"><span class="flab">When will you train?</span>'+planChips('when',D.when,function(k){return 'data-when="'+k+'"'},ag)+'</div>';
+      h+='<div class="field"><span class="flab">Where will you train?</span>'+planChips('where',D.where,function(k){return 'data-where="'+k+'"'},ag)
+        +'<small>This is your promise to yourself. Same time, same place makes it a habit.</small></div>';
     }
     return h;
   },
@@ -2443,6 +2611,8 @@ function validate(id){
   if(id==='days'){
     if(!D.n)return 'Choose how many days a week.';
     if(D.days.length!==D.n)return 'Pick exactly '+D.n+' days. You have picked '+D.days.length+'.';
+    if(!D.when)return 'Pick when you will train.';
+    if(!D.where)return 'Pick where you will train.';
   }
   if(id==='time'){
     if(!D.comfort)return 'Tell us if this session time works for you.';
@@ -2580,6 +2750,8 @@ $('ob').addEventListener('click',function(ev){
   if(b.id==='obNext'){
     var e=validate(STEPS[step][0]);
     if(e){obErr=e;var el=$('oberr');el.textContent=e;return}
+    /* the level test taken later from the tracker saves straight away */
+    if(D.only==='test'&&STEPS[step][0]==='test'){obErr='';finishOb();return}
     obErr='';step++;renderOb();window.scrollTo(0,0);return;
   }
   if(b.id==='obFinish'){finishOb();return}
@@ -2609,6 +2781,8 @@ $('ob').addEventListener('click',function(ev){
   }
   else if((a=b.getAttribute('data-pf'))){D.painFlag=a==='1';if(!D.painFlag)D.painCleared=false}
   else if((a=b.getAttribute('data-start'))){D.startMode=a}
+  else if((a=b.getAttribute('data-when'))){D.when=a}
+  else if((a=b.getAttribute('data-where'))){D.where=a}
   else return;
   renderOb();window.scrollTo(0,y);
 });
@@ -2673,6 +2847,12 @@ $('view').addEventListener('change',function(ev){
     else if(t.id==='fcLang')setVLang(t.value);
     return;
   }
+  if(t.hasAttribute('data-tz')){
+    var T0=st.taster||(st.taster={d:[]});T0.d[+t.getAttribute('data-tz')]=t.checked;
+    if(!T0.done&&TASTER.every(function(x,j){return T0.d[j]})){T0.done=isoD(NOW);save();celebrate('First win!','You learned the moves. Your first full session is next.','+30 XP');rerender(true)}
+    else save();
+    return;
+  }
   if(t.type==='checkbox'){
     var s=rec(viewW,DAYS[cur].k),g=t.getAttribute('data-g'),i=+t.getAttribute('data-i');
     if(g==='x')s.x=t.checked;else s[g][i]=t.checked;
@@ -2711,15 +2891,24 @@ $('view').addEventListener('click',function(ev){
   }
   var d=DAYS[cur],s=rec(viewW,d.k),wi=LU.weekInfo(viewW);
   if(ev.target.closest('#gstart')){gStart();return}
+  if(ev.target.id==='shortOn'){if(shortsInWeek(viewW)<SHORTMAX){s.short=true;save();stopRest();rerender(false)}return}
+  if(ev.target.id==='shortOff'){s.short=false;s.m=[];save();rerender(false);return}
+  if(ev.target.id==='planWhen'||ev.target.closest('[data-pw]')){var pw=ev.target.closest('[data-pw]');if(pw){st.p[pw.getAttribute('data-k')]=pw.getAttribute('data-pw');save();rerender(true)}return}
+  if(ev.target.id==='testLater'){D=draftFrom(st.p);D.skipTest=false;D.only='test';editing=true;step=3;obErr='';mode='ob';render();window.scrollTo(0,0);return}
   var bub=ev.target.closest('.bub');
   if(bub){
     wake();
     var cid=bub.getAttribute('data-c'),i=+bub.getAttribute('data-i'),card=bub.closest('.card'),bs=card.querySelectorAll('.bub'),n=bs.length;
     var now=s.e[cid]||0,next=(i<now)?i:i+1;
-    if(next>now){popXP(bub,'+5 XP');bub.classList.remove('pulse');void bub.offsetWidth;bub.classList.add('pulse')}
+    /* the tick itself is the feedback; no points float up for every round (rewards for ticking boxes undermine motivation) */
+    if(next>now){bub.classList.remove('pulse');void bub.offsetWidth;bub.classList.add('pulse')}
     s.e[cid]=next;save();
     for(var j=0;j<bs.length;j++){var on=j<next;bs[j].setAttribute('aria-pressed',String(on));bs[j].textContent=on?'✓':(bs[j].hasAttribute('data-top')?'TOP':(j+1))}
     card.classList.toggle('done',next>=n);
+    /* the last round done: ask how each exercise went, right on the card */
+    var lrb0=card.querySelector('.lrbox');
+    if(next>=n&&!lrb0&&viewW===todayWeek){var cc=sessionCards(viewW,cur).filter(function(x){return x.id===cid&&x.kind==='lift'})[0];if(cc){var sets0=card.querySelector('.sets');if(sets0)sets0.insertAdjacentHTML('afterend',lrRows(cc,s,wi))}}
+    else if(next<n&&lrb0)lrb0.remove();
     paintProgress();paintDone();nav();paintHeader();
     var rest=+bub.getAttribute('data-rest');
     if(G)return; /* the guided workout runs its own rest timer */
@@ -2729,10 +2918,19 @@ $('view').addEventListener('click',function(ev){
   }
   var lb=ev.target.closest('.lb');
   if(lb&&!lb.disabled){
-    var id=lb.getAttribute('data-id'),cl=lvOf(id,wi.block);
-    setLv(id,wi.block,cl+(lb.getAttribute('data-a')==='hard'?1:-1));
+    var id=lb.getAttribute('data-id'),cl=lvOf(id,wi.block),up=lb.getAttribute('data-a')==='hard';
+    /* Easier works at once; Harder goes one step per exercise per day */
+    if(up){s.up=s.up||{};if(s.up[id]){toast('One step at a time','You already moved this up today. Try the new level first.');return}s.up[id]=1}
+    else if(st.pend&&st.pend[id])delete st.pend[id];
+    setLv(id,wi.block,cl+(up?1:-1));
     rerender(true);return;
   }
+  var lrb=ev.target.closest('[data-lr]');
+  if(lrb){var q=lrb.getAttribute('data-lr').split(':');lrAnswer(q[0],q[1],s,wi);rerender(true);return}
+  var lru=ev.target.closest('[data-lru]');
+  if(lru){var uid=lru.getAttribute('data-lru');if(st.pend)delete st.pend[uid];if(s.lrm)s.lrm[uid]={t:'undone'};save();rerender(true);return}
+  var shb=ev.target.closest('#feelShort');
+  if(shb){if(st.p.size>1){st.p.size--;save();setup();viewW=todayWeek;toast('Shorter sessions','Your sessions are shorter from now on. Change it any time in Plan.');rerender(false)}return}
   var bp=ev.target.closest('.bpb');
   if(bp&&!bp.disabled){
     var bid=bp.getAttribute('data-id'),bl=+bp.getAttribute('data-l'),L=LAD[bid].L[bl];
@@ -3134,13 +3332,17 @@ function xpTotal(){
     DAYS.forEach(function(d){
       var r=st.wk[wk][d.k];if(!r)return;
       var e=r.e||{};Object.keys(e).forEach(function(c){x+=5*(+e[c]||0)});
-      x+=2*cnt((r.h||[]).slice(0,4))+cnt(r.w||[])+cnt(r.c||[])+cnt(r.r||[])+(r.x?10:0);
-      if(totals(w,d.i).complete)x+=kindOf(w,d.i)==='rest'?20:50;
+      x+=2*cnt((r.h||[]).slice(0,4))+cnt(r.w||[])+cnt(r.c||[])+cnt(r.r||[])+(r.x?10:0)+5*cnt((r.m||[]).slice(0,2));
+      if(totals(w,d.i).complete){
+        x+=kindOf(w,d.i)==='rest'?20:r.short?25:50;
+        /* coming back after a missed session with a full session earns a bonus: the best-tested way to get people training again */
+        if(kindOf(w,d.i)!=='rest'&&!r.short&&missedBefore(w,d.i))x+=COMEBACK;
+      }
     });
   });
   x+=25*Object.keys(st.tops).length+15*Object.keys(st.chal).length;
   Object.keys(st.tests).forEach(function(w){var T=st.tests[w]||{};Object.keys(T).forEach(function(k){if(T[k]&&T[k].v>0)x+=15})});
-  x+=10*X.formSets+2*X.formGood;
+  x+=10*X.formSets+2*X.formGood+(st.taster&&st.taster.done?30:0);
   Object.keys(X.q).forEach(function(k){x+=/:all$/.test(k)?30:20});
   return x;
 }
@@ -3178,7 +3380,9 @@ function questsFor(){
   var Q=[];
   if(k!=='rest'){
     Q.push({id:'session',t:'Finish today’s session',done:t.complete});
-    Q.push({id:'form',t:'Check your form on one exercise',done:!!XP().formDays[dk]});
+    /* a full warm-up instead of a daily camera check: being watched every day can turn teens off */
+    var wl=warmList(w,i).length;
+    Q.push({id:'warm',t:'Do the full warm-up',done:!r.short&&cnt((r.w||[]).slice(0,wl))>=wl});
   }else{
     Q.push({id:'rest',t:'Do your rest-day checklist',done:t.complete});
     Q.push({id:'day',t:'Plan your day in the Coach tab',done:!!(CO().day&&CO().day.date===dk)});
@@ -3268,7 +3472,7 @@ function badgeGrid(){
     var hn=b.h(s,X,lv),on=!!X.b[b.id];
     return '<div class="bdg'+(on?' got':'')+'"><span class="medal" aria-hidden="true">'+(on?MEDAL_ON:MEDAL_OFF)+'</span><b>'+esc(b.name)+'</b><small>'+(on?'Unlocked '+LU.fmtDate(parseD(X.b[b.id])):esc(b.desc)+' · '+Math.min(hn[0],hn[1])+' / '+hn[1])+'</small></div>';
   }).join('')+'</div>'
-  +'<details><summary>How to earn XP</summary><ul><li>Every round you tick: 5 XP</li><li>Finish a session: 50 XP. Finish a rest day: 20 XP</li><li>Warm-up, cool-down and checklist ticks: 1 XP each. Habits: 2 XP each</li><li>Top Set logged: 25 XP. Finisher: 10 to 15 XP. Each test result: 15 XP</li><li>Form check: 10 XP a set, plus 2 XP for every good rep</li><li>Daily quests: 20 XP each, plus 30 XP for finishing all three</li><li>Hit your weekly target to earn a streak freeze, which saves your streak from one missed session</li></ul></details>';
+  +'<details><summary>How to earn XP</summary><ul><li>Every round you tick: 5 XP</li><li>Finish a session: 50 XP. Finish a rest day: 20 XP</li><li>Warm-up, cool-down and checklist ticks: 1 XP each. Habits: 2 XP each</li><li>Top Set logged: 25 XP. Finisher: 10 to 15 XP. Each test result: 15 XP</li><li>Form check: 10 XP a set, plus 2 XP for every good rep</li><li>Daily quests: 20 XP each, plus 30 XP for finishing all three</li><li>Coming back after a missed session: 40 XP bonus</li><li>A short day: 25 XP, once a week</li><li>Hit your weekly target to earn a streak freeze, which saves your streak from one missed session</li></ul></details>';
 }
 
 /* ================= Membership =================
@@ -3360,7 +3564,7 @@ function md(t){
 function clang(){var l=st.ui.lang||'en';return l!=='en'?l:vlang()}
 function coachRules(){
   var teen=st.p.age<18;
-  return 'You are Coach, the AI coach built into Level-Up, a home-workout app. You coach one person, whose data is below.\n'
+  return 'You are '+coachName()+', the AI coach built into Level-Up, a home-workout app. You coach one person, whose data is below.\n'
     +'Only talk about their training, plan and progress, exercise form, warm-ups, recovery, sleep, food for training and their daily routine. If they ask about anything else, say in one friendly sentence that you only help with training, food and their day, then offer something you can help with.\n'
     +'Style: a warm, upbeat coach. Simple English and short sentences. Under 120 words unless they ask for a plan or a list. Use their real data and never invent numbers. If something is not in the data, say you do not know.\n'
     +'Plan changes: never write a new program. Tell them to tap Harder or Easier on the exercise in the Train tab, to do the 15-minute version on busy days, or to use Change my answers in the Plan tab.\n'
@@ -3507,6 +3711,12 @@ function coachTools(status){
 var CK=[
   ['sos',/chest pain|chest hurt|faint|dizz|racing heart|heart (is )?(racing|pounding)|can'?t breathe|black(ed)? out|सीने|छाती|चक्कर|बेहोश|धड़कन|छातीत|भोवळ|மார்பு வலி|மயக்கம்|தலை சுற்ற|বুকে ব্যথা|মাথা ঘোর|অজ্ঞান/i],
   ['low',/hate (my|myself)|hurt myself|kill myself|don'?t want to (live|eat)|not eating|stop(ped)? eating|feel(ing)? (very )?(low|sad|depressed|worthless)|\bugly\b|मरना|खुद को नुकसान|उदास|खाना नहीं खा|खाणं सोडल|मरायच|சாக|சாப்பிடவில்லை|மனம் கஷ்ட|মরে যেতে|খাই না|নিজেকে আঘাত|মন খারাপ/i],
+  /* who is who: answered by the app itself, never by the AI, so the coach cannot mix up its name with the user's */
+  ['rename',/(?:your|ur|you'?re) name (?:is|will be|should be)\s+[^\s.,!?]+|(?:i'?ll|i will|can i|let me) call you\s+[^\s.,!?]+|(?:be|become) called\s+[^\s.,!?]+/i],
+  ['about',/who (made|created|built|owns|developed|designed|coded|programmed) (you|u|this|level|the app|the website|the site|it)|who('?s| is) (the )?(owner|creator|founder|maker|developer)|(owner|creator|founder|maker) of (this|level|the)|which (ai|model)|what (ai|model) (are|r) (you|u)|are (you|u) (chatgpt|gemini|claude|gpt)|किसने बनाया|किसका है|मालिक कौन|कोणी बनवलं|मालक कोण|யார் உருவாக்க|யாருடையது|কে বানিয়েছে|মালিক কে/i],
+  ['myname',/what'?s my name|whats my name|what is my name|who am i\b|do you know my name|मेरा नाम क्या|माझं नाव काय|என் பெயர் என்ன|আমার নাম কী/i],
+  ['mynameis',/\bmy name is\b|\bmy name'?s\b|\bcall me\b|\bi am called\b|मेरा नाम|माझं नाव|என் பெயர்|আমার নাম/i],
+  ['ident',/what'?s (your|ur) name|whats (your|ur) name|what is (your|ur) name|(your|ur) name\??$|who are you|who r u|are you (a |an )?(bot|ai|robot|human|real|person)|आपका नाम|तुम्हारा नाम|तेरा नाम|तुम कौन|आप कौन|तुमचं नाव|तुझं नाव|तू कोण|உன் பெயர்|உங்கள் பெயர்|நீ யார்|நீங்கள் யார்|তোমার নাম|আপনার নাম|তুমি কে|আপনি কে/i],
   ['kit',/backpack|dumbbell|\bbands?\b|pull.?up bar|equipment|weigh the bag|bag weight|बैग|डम्बल|बैंड|उपकरण|பேக்|டம்பெல்|ব্যাগ|ডাম্বেল|ব্যান্ড/i],
   ['body',/\b(weight|fat|thin|skinny|slim|lose|gain|bulk|cut|diet|dieting|calorie|calories|kcal|fasting|supplements?|protein powder|whey|creatine|abs|six.?pack|muscular)\b|look (good|bad)|my body|वज़न|वजन|मोटा|पतला|डाइट|कैलोरी|सप्लीमेंट|प्रोटीन पाउडर|एब्स|எடை|டயட்|கலோரி|சப்ளிமெண்ட்|புரோட்டீன் பவுடர்|ওজন|মোটা|রোগা|ডায়েট|ক্যালরি|সাপ্লিমেন্ট/i],
   ['pain',/\b(pain|hurt|hurts|hurting|injur\w*|sprain\w*|twisted|swollen|swelling|limp|limping|ache|aching)\b|दर्द|चोट|मोच|सूजन|दुखत|வலி|காயம்|ব্যথা|চোট|আঘাত/i],
@@ -3537,6 +3747,11 @@ var CK=[
   ['thanks',/thank|thanks|thx|^ok(ay)?( coach)?[.!]?$|^(great|nice|cool)[.!]?$|धन्यवाद|शुक्रिया|आभार|நன்றி|ধন্যবাদ/i]
 ];
 function lcTeen(){return st.p.age<18}
+/* the coach's name: "Coach" unless the user gave it one (letters only, so it is safe to put in a prompt) */
+var NAME_OK=/^[A-Za-zऀ-෿]{2,16}$/;
+/* who made the app, for "who made you?" */
+var APP_OWNER='Rachit';
+function coachName(){var n=st.coach&&st.coach.coachName;return n&&NAME_OK.test(n)?n:'Coach'}
 function lcWeekNow(){return started&&!finished?todayWeek:0}
 function lcStats(w){var tot=0;for(var x=1;x<=LU.WEEKS;x++)tot+=weekStats(x).sess;return {tot:tot,sk:streaks(),ws:weekStats(w||1)}}
 /* [name, start value, latest value, week of the latest value] for every test with both */
@@ -3569,6 +3784,32 @@ function lcReply(k,q){
     add('I am really glad you told me. You matter.');
     add(teen?'Please talk to a parent or another adult you trust today, or a doctor. You do not have to handle this alone.':'Please talk to someone you trust today, or a doctor. You do not have to handle this alone.');
     add('I am here for training, food and sleep whenever you want.');return L;
+  }
+  if(k==='rename'){
+    var nm=(/(?:your|ur|you'?re) name (?:is|will be|should be)\s+([^\s.,!?]+)|(?:i'?ll|i will|can i|let me) call you\s+([^\s.,!?]+)|(?:be|become) called\s+([^\s.,!?]+)/i.exec(q)||[]).slice(1).filter(Boolean)[0]||'';
+    if(!NAME_OK.test(nm)){add('That name will not work. Pick a short name with letters only.');return L}
+    nm=nm.charAt(0).toUpperCase()+nm.slice(1);CO().coachName=nm;save();
+    add('Okay! Call me '+U(nm)+'. I am still your Level-Up coach.');return L;
+  }
+  if(k==='ident'){add('I am '+U(coachName())+', your Level-Up coach. I help with your training, food, sleep and your day.');return L}
+  if(k==='about'){
+    add('Level-Up was made by '+U(APP_OWNER)+'.');
+    add('I am '+U(coachName())+', your Level-Up coach. I help with your training, food, sleep and your day.');
+    add(SAMPLE?'Inside Claude, my answers come from Claude, an AI made by Anthropic.'
+      :DAI.state==='ready'?'My answers come from a small AI model called Qwen that runs on this device. It only knows your plan and progress, so it can make mistakes.'
+      :'Right now I answer with written rules from the app, so no AI is needed.');
+    return L;
+  }
+  if(k==='myname'){add('Your name is '+U(st.p.nick)+'.');return L}
+  /* the app only ever uses the nickname from setup, never a name typed in chat */
+  if(k==='mynameis'){
+    /* a name they give in chat becomes their nickname everywhere in the app (letters only, so it is safe in a prompt) */
+    var given=(/my name(?: is|'?s)\s+([^\s.,!?]+)|call me\s+([^\s.,!?]+)|i am called\s+([^\s.,!?]+)/i.exec(q)||[]).slice(1).filter(Boolean)[0]||'';
+    if(NAME_OK.test(given)){
+      given=given.charAt(0).toUpperCase()+given.slice(1);st.p.nick=given;save();try{paintHeader()}catch(e){}
+      add('Nice to meet you, '+U(given)+'! I will call you that from now on.');return L;
+    }
+    add('Hi '+U(st.p.nick)+'! I am '+U(coachName())+', your coach.');add('To change your nickname, use Change my answers in the Plan tab.');return L;
   }
   if(k==='body'){
     if(teen){add('I do not talk about weight, looks, calories or supplements. Your plan works with regular meals, water and sleep, and it never comments on your body.');add('If you are worried about food or your body, please talk to a parent or a doctor. You matter.')}
@@ -3687,7 +3928,7 @@ function lcReply(k,q){
     var mid2=lcMainId();if(mid2&&fxIds().indexOf(mid2)>-1)add('[[open:form:'+mid2+']]');return L;
   }
   if(k==='xp'){add('Every round you tick: 5 XP');add('Finish a session: 50 XP. Finish a rest day: 20 XP');add('Hit your weekly target to earn a streak freeze, which saves your streak from one missed session');add('[[open:progress]]');return L}
-  if(k==='tired'){add('A short session still counts as a training day. Never zero.');add('On a busy or tired day, do the 15-minute version at the bottom of today’s card.');add('If you are tired every day, check sleep first: '+(teen?9:8)+' hours or more.');return L}
+  if(k==='tired'){add('A short session still counts as a training day. Never zero.');add('On a busy or tired day, tap Short day (15 min) on today’s card. You get one a week.');add('If you are tired every day, check sleep first: '+(teen?9:8)+' hours or more.');return L}
   if(k==='kit'){
     add('Weigh your loaded backpack on a bathroom scale. Add 1 kg when you hit the top number on every set. Never go over the limit shown on the card.');
     var eq=(st.p.eq||[]).map(function(e){return EQNAME[e]}).filter(Boolean);
@@ -3708,8 +3949,8 @@ function lcIntent(text){
 }
 function localCoach(text,allowFallback,onlySafety){
   var q=String(text).replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim(),k=lcIntent(q);
-  /* with an AI coach loaded, only the safety topics are answered here */
-  if(onlySafety&&['sos','low','body','pain'].indexOf(k)<0)k=null;
+  /* with an AI coach loaded, only the safety topics and the who-is-who questions are answered here */
+  if(onlySafety&&['sos','low','body','pain','rename','ident','about','myname','mynameis'].indexOf(k)<0)k=null;
   var L=k?lcReply(k,q):null;
   if(!L&&allowFallback)L=lcFallback();
   return L?L.join('\n'):null;
@@ -3763,6 +4004,8 @@ function daiPick(){return 'small'}
 function daiImport(){if(!DAI.lib)DAI.lib=(new Function('u','return import(u)'))(DAI_LIB).catch(function(e){DAI.lib=null;throw e});return DAI.lib}
 function daiLoad(key){
   var M=DAI_MODELS[key];if(!M||DAI.state==='loading')return;
+  /* switching models: free the old one from the graphics chip first */
+  if(DAI.eng){try{DAI.eng.unload()}catch(e){}DAI.eng=null}
   DAI.state='loading';DAI.pct=0;DAI.model=key;DAI.err='';DAI.doneMB=0;DAI.totalMB=0;DAI.phase='download';daiPaint();
   daiImport().then(function(w){
     DAI.w=w;return daiConfig(w,M);
@@ -3846,13 +4089,14 @@ function daiSystem(){
     +p.n+' sessions a week. '+(todayIdx>=0?'Today: '+look(todayWeek,todayIdx).title+' ('+dayStatus(todayWeek,todayIdx)+'). ':'')
     +'Streak '+streaks().cur+'. Goals: '+((p.goals||[]).map(function(g){return GOALNAME[g]}).join(', ')||'general fitness')+'. Sore areas: '+((p.pain||[]).map(function(a){return LU.PAINAREA[a]}).join(', ')||'none')+'.'
     +(notesOf().length?' Notes: '+notesOf().join('; ')+'.':'');
-  return 'You are Coach in the Level-Up home-workout app. Reply in 2 to 4 short sentences, under 60 words, plain words, warm, no emojis, no headings.\n'
+  return 'Your name is '+coachName()+'. You are the coach in the Level-Up home-workout app. The user is a different person, called '+p.nick+'. '+p.nick+' is never your name; never change your name.\n'
+    +'Reply in 2 to 4 short sentences, under 60 words, plain words, warm, no emojis, no headings.\n'
     +'Rules: use only the facts given, never invent numbers or exercises; talk only about training, food for training, sleep and their day; never write a new program (they tap Harder or Easier on the card, or do the 15-minute version); '
     +'sharp pain, chest pain, fainting or dizziness means stop and '+(teen?'tell a parent, then see a doctor':'see a doctor')+'; '
     +(teen?'they are under 18: no calories, diets, fasting, supplements, protein powder, and no comments on weight or looks; ':'no crash diets or fasting; ')
     +'never ask for their name, school, contacts or photos. End with one line like [[open:progress]], [[open:plan]] or [[open:day:mon]] only when it helps.'
     +(lang!=='en'?' Reply in '+vname(lang)+'; keep exercise names in English.':'')
-    +'\nPerson: '+who;
+    +'\nABOUT THE USER (this is '+p.nick+', not you): '+who;
 }
 /* the built-in coach's own answer rides along as the facts for this question, so the numbers come out right */
 function daiFacts(text){
@@ -3937,7 +4181,7 @@ function chatSection(c,aiTop){
   var msgs=c.chat.slice(-30).map(function(m){return '<div class="msg '+(m.role==='user'?'me':'ai')+'">'+(m.role==='user'?esc(m.content):(m.local?aiHtml(localT(m.content)):aiHtml(m.content))+sayBtn())+'</div>'}).join('');
   var Q=['How am I doing?','Review my week','What should I eat after training?','Explain today’s session','I missed a session. What now?','My muscles are sore'];
   var notes=notesOf();
-  return '<section class="cbox" id="chatbox"><header><b>'+(aiTop?'AI coach on this device':'Ask Coach')+'</b><span class="hbtns">'+(c.chat.length?'<button type="button" class="linkbtn" id="cClear">Clear chat</button>':'')+(aiTop?'<button type="button" class="linkbtn" id="daiRm">Remove the AI coach</button>':'')+'</span></header>'
+  return '<section class="cbox" id="chatbox"><header><b>'+(aiTop?'AI coach on this device':'Ask Coach')+'</b><span class="hbtns">'+(c.chat.length?'<button type="button" class="linkbtn" id="cClear">Clear chat</button>':'')+(aiTop&&DAI.model==='small'?'<button type="button" class="linkbtn" data-dai="better">Switch to the smarter coach (about 1 GB)</button>':'')+(aiTop?'<button type="button" class="linkbtn" id="daiRm">Remove the AI coach</button>':'')+'</span></header>'
     +'<p class="note">'+(aiTop?'It knows your plan and progress. Nothing you type leaves the phone.':'Your coach can look up any exercise, day or result in your plan, and suggest buttons you can tap.')+'</p>'
     +'<div class="msgs" id="msgs" aria-live="polite" data-notr>'+(msgs||'<p class="note">'+esc(T('Ask anything about your training, food or sleep.'))+'</p>')+'</div>'
     +'<div class="qchips">'+Q.map(function(q){return '<button type="button" data-q="'+esc(q)+'">'+esc(q)+'</button>'}).join('')+'</div>'
@@ -4955,7 +5199,8 @@ function formClick(ev){
   if(b.id==='fcTestV'){speechPrime();var was=VO.on;VO.on=true;say('I can see you. Start when you are ready.',true);VO.on=was;return}
 }
 if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname))window.__levelupForm={FC:FC,EXF:EXF,newA:newA,problem:problem,sideOf:sideOf,kmap:kmap,fcStep:fcStep,fxCfg:fxCfg,planLevel:planLevel,VO:VO,
-  fcFinish:fcFinish,fcError:fcError,liveText:liveText,toast:toast,celebrate:celebrate,hideCele:hideCele,T:T,loadLang:loadLang,DAI:DAI,localCoach:localCoach,rerender:rerender,
+  fcFinish:fcFinish,fcError:fcError,liveText:liveText,toast:toast,celebrate:celebrate,hideCele:hideCele,T:T,loadLang:loadLang,DAI:DAI,localCoach:localCoach,rerender:rerender,missedBefore:missedBefore,feelPattern:feelPattern,sessionsDone:sessionsDone,xpTotal:xpTotal,st:function(){return st},
+  plan:function(){return {PL:PL,DAYS:DAYS,todayWeek:todayWeek,todayIdx:todayIdx,LAD:LAD}},lvOf:lvOf,
   /* test-only: every line the app can show, as word-list keys */
   harvest:function(withDom){
     var K={};
